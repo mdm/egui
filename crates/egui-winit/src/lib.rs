@@ -375,6 +375,11 @@ impl State {
                 is_synthetic,
                 ..
             } => {
+                log::trace!("RAW WINIT Keyboard input: {:?} ({:?})", event, is_synthetic);
+                // Winit generates fake "synthetic" KeyboardInput events when the focus
+                // is changed to the window, or away from it. Synthetic key presses
+                // represent no real key presses and should be ignored.
+                // See https://github.com/rust-windowing/winit/issues/3543
                 if *is_synthetic && event.state == ElementState::Pressed {
                     // Winit generates fake "synthetic" KeyboardInput events when the focus
                     // is changed to the window, or away from it. Synthetic key presses
@@ -460,6 +465,7 @@ impl State {
                 }
             }
             WindowEvent::ModifiersChanged(state) => {
+                log::trace!("RAW WINIT Modifiers changed: {:?}", state);
                 let state = state.state();
 
                 let alt = state.alt_key();
@@ -1421,7 +1427,7 @@ fn key_from_key_code(key: winit::keyboard::KeyCode) -> Option<egui::Key> {
         KeyCode::Escape => Key::Escape,
         KeyCode::Tab => Key::Tab,
         KeyCode::Backspace => Key::Backspace,
-        KeyCode::Enter | KeyCode::NumpadEnter => Key::Enter,
+        KeyCode::Enter => Key::Enter,
 
         KeyCode::Insert => Key::Insert,
         KeyCode::Delete => Key::Delete,
@@ -1437,7 +1443,7 @@ fn key_from_key_code(key: winit::keyboard::KeyCode) -> Option<egui::Key> {
         // KeyCode::Colon => Key::Colon, // NOTE: there is no physical colon key on an american keyboard
         KeyCode::Semicolon => Key::Semicolon,
         KeyCode::Backslash => Key::Backslash,
-        KeyCode::Slash | KeyCode::NumpadDivide => Key::Slash,
+        KeyCode::Slash => Key::Slash,
         KeyCode::BracketLeft => Key::OpenBracket,
         KeyCode::BracketRight => Key::CloseBracket,
         KeyCode::Backquote => Key::Backtick,
@@ -1446,20 +1452,46 @@ fn key_from_key_code(key: winit::keyboard::KeyCode) -> Option<egui::Key> {
         KeyCode::Cut => Key::Cut,
         KeyCode::Copy => Key::Copy,
         KeyCode::Paste => Key::Paste,
-        KeyCode::Minus | KeyCode::NumpadSubtract => Key::Minus,
-        KeyCode::NumpadAdd => Key::Plus,
+        KeyCode::Minus => Key::Minus,
         KeyCode::Equal => Key::Equals,
 
-        KeyCode::Digit0 | KeyCode::Numpad0 => Key::Num0,
-        KeyCode::Digit1 | KeyCode::Numpad1 => Key::Num1,
-        KeyCode::Digit2 | KeyCode::Numpad2 => Key::Num2,
-        KeyCode::Digit3 | KeyCode::Numpad3 => Key::Num3,
-        KeyCode::Digit4 | KeyCode::Numpad4 => Key::Num4,
-        KeyCode::Digit5 | KeyCode::Numpad5 => Key::Num5,
-        KeyCode::Digit6 | KeyCode::Numpad6 => Key::Num6,
-        KeyCode::Digit7 | KeyCode::Numpad7 => Key::Num7,
-        KeyCode::Digit8 | KeyCode::Numpad8 => Key::Num8,
-        KeyCode::Digit9 | KeyCode::Numpad9 => Key::Num9,
+        KeyCode::Digit0 => Key::Num0,
+        KeyCode::Digit1 => Key::Num1,
+        KeyCode::Digit2 => Key::Num2,
+        KeyCode::Digit3 => Key::Num3,
+        KeyCode::Digit4 => Key::Num4,
+        KeyCode::Digit5 => Key::Num5,
+        KeyCode::Digit6 => Key::Num6,
+        KeyCode::Digit7 => Key::Num7,
+        KeyCode::Digit8 => Key::Num8,
+        KeyCode::Digit9 => Key::Num9,
+
+        KeyCode::Numpad0 => Key::Numpad0,
+        KeyCode::Numpad1 => Key::Numpad1,
+        KeyCode::Numpad2 => Key::Numpad2,
+        KeyCode::Numpad3 => Key::Numpad3,
+        KeyCode::Numpad4 => Key::Numpad4,
+        KeyCode::Numpad5 => Key::Numpad5,
+        KeyCode::Numpad6 => Key::Numpad6,
+        KeyCode::Numpad7 => Key::Numpad7,
+        KeyCode::Numpad8 => Key::Numpad8,
+        KeyCode::Numpad9 => Key::Numpad9,
+        KeyCode::NumpadDivide => Key::NumpadDivide,
+        KeyCode::NumpadMultiply => Key::NumpadMultiply,
+        KeyCode::NumpadSubtract => Key::NumpadSubtract,
+        KeyCode::NumpadAdd => Key::NumpadAdd,
+        KeyCode::NumpadDecimal => Key::NumpadDecimal,
+        KeyCode::NumpadEnter => Key::NumpadEnter,
+
+        KeyCode::CapsLock => Key::CapsLock,
+        KeyCode::ShiftLeft => Key::ShiftLeft,
+        KeyCode::ShiftRight => Key::ShiftRight,
+        KeyCode::ControlLeft => Key::ControlLeft,
+        KeyCode::ControlRight => Key::ControlRight,
+        KeyCode::AltLeft => Key::AltLeft,
+        KeyCode::AltRight => Key::AltRight,
+        KeyCode::SuperLeft => Key::SuperLeft,
+        KeyCode::SuperRight => Key::SuperRight,
 
         KeyCode::KeyA => Key::A,
         KeyCode::KeyB => Key::B,
