@@ -182,7 +182,7 @@ pub(crate) fn on_keydown(event: web_sys::KeyboardEvent, runner: &mut AppRunner) 
     let code = event.code();
     let (egui_key, egui_key_physical) = translate_key(&key, &code);
 
-    if let Some(egui_key) = egui_key {
+    if let Some(egui_key) = egui_key.or(egui_key_physical) {
         let egui_event = egui::Event::Key {
             key: egui_key,
             physical_key: egui_key_physical, // TODO(fornwall)
@@ -272,7 +272,8 @@ pub(crate) fn on_keyup(event: web_sys::KeyboardEvent, runner: &mut AppRunner) {
 
     let mut should_stop_propagation = true;
 
-    if let (Some(key), physical_key) = translate_key(&event.key(), &event.code()) {
+    let (logical_key, physical_key) = translate_key(&event.key(), &event.code());
+    if let Some(key) = logical_key.or(physical_key) {
         let egui_event = egui::Event::Key {
             key,
             physical_key, // TODO(fornwall)
