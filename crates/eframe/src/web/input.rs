@@ -145,8 +145,11 @@ pub fn text_from_keyboard_event(event: &web_sys::KeyboardEvent) -> Option<String
 
 /// Web sends all keys as strings, so it is up to us to figure out if it is
 /// a real text input or the name of a key.
-pub fn translate_key(key: &str) -> Option<egui::Key> {
-    egui::Key::from_name(key)
+pub fn translate_key(key: &str, code: &str) -> (Option<egui::Key>, Option<egui::Key>) {
+    (
+        egui::Key::from_name(key),
+        egui::Key::from_physical_name(code),
+    )
 }
 
 pub fn modifiers_from_kb_event(event: &web_sys::KeyboardEvent) -> egui::Modifiers {

@@ -179,12 +179,13 @@ pub(crate) fn on_keydown(event: web_sys::KeyboardEvent, runner: &mut AppRunner) 
     runner.input.raw.modifiers = modifiers;
 
     let key = event.key();
-    let egui_key = translate_key(&key);
+    let code = event.code();
+    let (egui_key, egui_key_physical) = translate_key(&key, &code);
 
     if let Some(egui_key) = egui_key {
         let egui_event = egui::Event::Key {
             key: egui_key,
-            physical_key: None, // TODO(fornwall)
+            physical_key: egui_key_physical, // TODO(fornwall)
             pressed: true,
             repeat: false, // egui will fill this in for us!
             modifiers,
@@ -271,10 +272,10 @@ pub(crate) fn on_keyup(event: web_sys::KeyboardEvent, runner: &mut AppRunner) {
 
     let mut should_stop_propagation = true;
 
-    if let Some(key) = translate_key(&event.key()) {
+    if let (Some(key), physical_key) = translate_key(&event.key(), &event.code()) {
         let egui_event = egui::Event::Key {
             key,
-            physical_key: None, // TODO(fornwall)
+            physical_key, // TODO(fornwall)
             pressed: false,
             repeat: false,
             modifiers,
