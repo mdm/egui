@@ -50,12 +50,15 @@ fn test_demo_app() {
             // Load a local image where we know it exists and loads quickly
             #[cfg(feature = "image_viewer")]
             Anchor::ImageViewer => {
+                use egui::KeyExt as _;
+
                 harness.step();
 
                 harness
                     .get_by_role_and_label(Role::TextInput, "URI:")
                     .focus();
-                harness.key_press_modifiers(egui::ModifierPattern::COMMAND, egui::Key::A);
+                harness
+                    .key_press_modifiers(egui::ModifierPattern::COMMAND, egui::Key::character('a'));
 
                 harness
                     .get_by_role_and_label(Role::TextInput, "URI:")

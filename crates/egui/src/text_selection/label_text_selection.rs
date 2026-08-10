@@ -3,7 +3,7 @@ use std::sync::Arc;
 use emath::TSTransform;
 
 use crate::{
-    Context, CursorIcon, Event, Galley, Id, LayerId, Plugin, Pos2, Rect, Response, Ui,
+    Context, CursorIcon, Event, Galley, Id, LayerId, NamedKey, Plugin, Pos2, Rect, Response, Ui,
     ViewportIdMap, layers::ShapeIdx, text::CCursor, text_selection::CCursorRange,
 };
 
@@ -259,7 +259,7 @@ impl ViewportLabelSelectionState {
             }
         }
 
-        let pressed_escape = ui.input(|i| i.key_pressed(crate::Key::Escape));
+        let pressed_escape = ui.input(|i| i.key_pressed(&crate::Key::Named(NamedKey::Escape)));
         let clicked_something_else = ui.input(|i| i.pointer.any_pressed()) && !self.any_hovered;
         let delected_everything = pressed_escape || clicked_something_else;
 

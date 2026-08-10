@@ -5,10 +5,12 @@ use crate::{Button, Context, Key, KeyboardShortcut, ModifierPattern, Ui};
 /// The suggested keyboard shortcuts for global gui zooming.
 pub mod kb_shortcuts {
     use super::{Key, KeyboardShortcut, ModifierPattern};
+    use crate::KeyExt as _;
+    use std::sync::LazyLock;
 
     /// Primary keyboard shortcut for zooming in (`Cmd` + `+`).
-    pub const ZOOM_IN: KeyboardShortcut =
-        KeyboardShortcut::new(ModifierPattern::COMMAND, Key::Plus);
+    pub static ZOOM_IN: LazyLock<KeyboardShortcut> =
+        LazyLock::new(|| KeyboardShortcut::new(ModifierPattern::COMMAND, Key::character('+')));
 
     /// Secondary keyboard shortcut for zooming in (`Cmd` + `=`).
     ///
@@ -16,16 +18,16 @@ pub mod kb_shortcuts {
     /// but it is annoying to have to press shift.
     /// So most browsers also allow `Cmd` + `=` for zooming in.
     /// We do the same.
-    pub const ZOOM_IN_SECONDARY: KeyboardShortcut =
-        KeyboardShortcut::new(ModifierPattern::COMMAND, Key::Equals);
+    pub static ZOOM_IN_SECONDARY: LazyLock<KeyboardShortcut> =
+        LazyLock::new(|| KeyboardShortcut::new(ModifierPattern::COMMAND, Key::character('=')));
 
     /// Keyboard shortcut for zooming in (`Cmd` + `-`).
-    pub const ZOOM_OUT: KeyboardShortcut =
-        KeyboardShortcut::new(ModifierPattern::COMMAND, Key::Minus);
+    pub static ZOOM_OUT: LazyLock<KeyboardShortcut> =
+        LazyLock::new(|| KeyboardShortcut::new(ModifierPattern::COMMAND, Key::character('-')));
 
     /// Keyboard shortcut for resetting zoom in (`Cmd` + `0`).
-    pub const ZOOM_RESET: KeyboardShortcut =
-        KeyboardShortcut::new(ModifierPattern::COMMAND, Key::Num0);
+    pub static ZOOM_RESET: LazyLock<KeyboardShortcut> =
+        LazyLock::new(|| KeyboardShortcut::new(ModifierPattern::COMMAND, Key::character('0')));
 }
 
 /// Let the user scale the GUI (change [`Context::zoom_factor`]) by pressing

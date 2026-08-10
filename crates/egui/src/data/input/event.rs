@@ -26,7 +26,7 @@ pub enum Event {
 
     /// Text input, e.g. via keyboard.
     ///
-    /// When the user presses enter/return, do not send a [`Text`](Event::Text) (just [`Key::Enter`]).
+    /// When the user presses enter/return, do not send a [`Text`](Event::Text) (just [`Key::Named(NamedKey::Enter)`]).
     Text(String),
 
     /// A key was pressed or released.

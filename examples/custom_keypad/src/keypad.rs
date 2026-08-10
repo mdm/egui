@@ -1,4 +1,5 @@
 use eframe::egui::{self, Button, Ui, Vec2, pos2, vec2};
+use egui::{KeyExt as _, NamedKey};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 enum Transition {
@@ -110,10 +111,10 @@ impl Keypad {
                     state.queue_char('3');
                 }
                 if ui.add_sized(size_1x1, Button::new("⏮")).clicked() {
-                    state.queue_key(egui::Key::Home);
+                    state.queue_key(egui::Key::Named(NamedKey::Home));
                 }
                 if ui.add_sized(size_1x1, Button::new("🔙")).clicked() {
-                    state.queue_key(egui::Key::Backspace);
+                    state.queue_key(egui::Key::Named(NamedKey::Backspace));
                 }
             });
             ui.horizontal(|ui| {
@@ -127,10 +128,10 @@ impl Keypad {
                     state.queue_char('6');
                 }
                 if ui.add_sized(size_1x1, Button::new("⏭")).clicked() {
-                    state.queue_key(egui::Key::End);
+                    state.queue_key(egui::Key::Named(NamedKey::End));
                 }
                 if ui.add_sized(size_1x1, Button::new("⎆")).clicked() {
-                    state.queue_key(egui::Key::Enter);
+                    state.queue_key(egui::Key::Named(NamedKey::Enter));
                     trans = Transition::CloseOnNextFrame;
                 }
             });
@@ -145,7 +146,7 @@ impl Keypad {
                     state.queue_char('9');
                 }
                 if ui.add_sized(size_1x1, Button::new("⏶")).clicked() {
-                    state.queue_key(egui::Key::ArrowUp);
+                    state.queue_key(egui::Key::Named(NamedKey::ArrowUp));
                 }
                 if ui.add_sized(size_1x1, Button::new("⌨")).clicked() {
                     trans = Transition::CloseImmediately;
@@ -159,13 +160,13 @@ impl Keypad {
                     state.queue_char('.');
                 }
                 if ui.add_sized(size_1x1, Button::new("⏴")).clicked() {
-                    state.queue_key(egui::Key::ArrowLeft);
+                    state.queue_key(egui::Key::Named(NamedKey::ArrowLeft));
                 }
                 if ui.add_sized(size_1x1, Button::new("⏷")).clicked() {
-                    state.queue_key(egui::Key::ArrowDown);
+                    state.queue_key(egui::Key::Named(NamedKey::ArrowDown));
                 }
                 if ui.add_sized(size_1x1, Button::new("⏵")).clicked() {
-                    state.queue_key(egui::Key::ArrowRight);
+                    state.queue_key(egui::Key::Named(NamedKey::ArrowRight));
                 }
             });
         });

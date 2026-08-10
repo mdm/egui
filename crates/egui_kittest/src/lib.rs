@@ -538,28 +538,28 @@ impl<'a, State> Harness<'a, State> {
 
     /// Press the given keys in combination.
     ///
-    /// For e.g. [`Key::A`] + [`Key::B`] this would generate:
-    /// - Press [`Key::A`]
-    /// - Press [`Key::B`]
-    /// - Release [`Key::B`]
-    /// - Release [`Key::A`]
+    /// For e.g. [`Key::character('a')`] + [`Key::character('b')`] this would generate:
+    /// - Press [`Key::character('a')`]
+    /// - Press [`Key::character('b')`]
+    /// - Release [`Key::character('b')`]
+    /// - Release [`Key::character('a')`]
     pub fn key_combination(&self, keys: &[Key]) {
         for key in keys {
-            self.key_down(*key);
+            self.key_down(key.clone());
         }
         for key in keys.iter().rev() {
-            self.key_up(*key);
+            self.key_up(key.clone());
         }
     }
 
     /// Press the given keys in combination, with modifiers.
     ///
-    /// For e.g. [`ModifierPattern::COMMAND`] + [`Key::A`] + [`Key::B`] this would generate:
+    /// For e.g. [`ModifierPattern::COMMAND`] + [`Key::character('a')`] + [`Key::character('b')`] this would generate:
     /// - Press [`ModifierPattern::COMMAND`]
-    /// - Press [`Key::A`]
-    /// - Press [`Key::B`]
-    /// - Release [`Key::B`]
-    /// - Release [`Key::A`]
+    /// - Press [`Key::character('a')`]
+    /// - Press [`Key::character('b')`]
+    /// - Release [`Key::character('b')`]
+    /// - Release [`Key::character('a')`]
     /// - Release [`ModifierPattern::COMMAND`]
     pub fn key_combination_modifiers(&self, modifiers: ModifierPattern, keys: &[Key]) {
         self.modifiers(modifiers);
@@ -567,7 +567,7 @@ impl<'a, State> Harness<'a, State> {
         for pressed in [true, false] {
             for key in keys {
                 self.event(egui::Event::Key {
-                    key: *key,
+                    key: key.clone(),
                     pressed,
                     modifiers: self.realize(modifiers),
                     repeat: false,

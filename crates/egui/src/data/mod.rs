@@ -7,5 +7,5 @@ pub mod output;
 mod user_data;
 
 pub use code::Code;
-pub use key::Key;
+pub use key::{Key, KeyExt, NamedKey};
 pub use user_data::UserData;

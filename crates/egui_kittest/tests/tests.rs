@@ -3,7 +3,7 @@
 
 use egui::ModifiersExt as _;
 
-use egui::{ModifierPattern, ScrollArea, Vec2, include_image};
+use egui::{KeyExt as _, ModifierPattern, NamedKey, ScrollArea, Vec2, include_image};
 use egui_kittest::{Harness, SnapshotResults};
 use kittest::Queryable as _;
 
@@ -56,10 +56,12 @@ fn test_modifiers() {
             if ui.button("Click me").clicked() && ui.input(|i| i.modifiers.command(i.os)) {
                 state.cmd_clicked = true;
             }
-            if ui.input(|i| i.modifiers.command(i.os) && i.key_pressed(egui::Key::Z)) {
+            if ui.input(|i| i.modifiers.command(i.os) && i.key_pressed(&egui::Key::character('z')))
+            {
                 state.cmd_z_pressed = true;
             }
-            if ui.input(|i| i.modifiers.command(i.os) && i.key_pressed(egui::Key::Y)) {
+            if ui.input(|i| i.modifiers.command(i.os) && i.key_pressed(&egui::Key::character('y')))
+            {
                 state.cmd_y_pressed = true;
             }
         },
@@ -71,10 +73,10 @@ fn test_modifiers() {
         .click_modifiers(ModifierPattern::COMMAND);
     harness.run();
 
-    harness.key_press_modifiers(ModifierPattern::COMMAND, egui::Key::Z);
+    harness.key_press_modifiers(ModifierPattern::COMMAND, egui::Key::character('z'));
     harness.run();
 
-    harness.key_combination_modifiers(ModifierPattern::COMMAND, &[egui::Key::Y]);
+    harness.key_combination_modifiers(ModifierPattern::COMMAND, &[egui::Key::character('y')]);
     harness.run();
 
     let state = harness.state();
@@ -239,9 +241,9 @@ fn test_ime_composition_visuals() {
     text_edit.focus();
     harness.run();
 
-    harness.key_press(egui::Key::Home);
+    harness.key_press(egui::Key::Named(NamedKey::Home));
     for _ in 0.."Hello. ".len() {
-        harness.key_press(egui::Key::ArrowRight);
+        harness.key_press(egui::Key::Named(NamedKey::ArrowRight));
     }
 
     let text = "Have you ever seen an IME composing English text? You now see it. ";

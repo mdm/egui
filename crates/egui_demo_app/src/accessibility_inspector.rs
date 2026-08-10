@@ -5,8 +5,9 @@ use accesskit_consumer::{FilterResult, Node, NodeId, Tree, TreeChangeHandler};
 
 use eframe::epaint::text::TextWrapMode;
 use egui::{
-    Button, Color32, Context, Event, Frame, FullOutput, Id, Key, KeyboardShortcut, Label,
-    ModifierPattern, Panel, RawInput, RichText, ScrollArea, Ui, collapsing_header::CollapsingState,
+    Button, Color32, Context, Event, Frame, FullOutput, Id, Key, KeyExt as _, KeyboardShortcut,
+    Label, ModifierPattern, Panel, RawInput, RichText, ScrollArea, Ui,
+    collapsing_header::CollapsingState,
 };
 
 /// This [`egui::Plugin`] adds an inspector panel.
@@ -75,7 +76,7 @@ impl egui::Plugin for AccessibilityInspectorPlugin {
         if ui.input_mut(|i| {
             i.consume_shortcut(&KeyboardShortcut::new(
                 ModifierPattern::COMMAND | ModifierPattern::ALT,
-                Key::I,
+                Key::character('i'),
             ))
         }) {
             self.open = !self.open;

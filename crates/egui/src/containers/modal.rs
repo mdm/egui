@@ -1,7 +1,8 @@
 use emath::{Align2, Vec2};
 
 use crate::{
-    Area, Color32, Context, Frame, Id, InnerResponse, Order, Response, Sense, Ui, UiBuilder, UiKind,
+    Area, Color32, Context, Frame, Id, InnerResponse, NamedKey, Order, Response, Sense, Ui,
+    UiBuilder, UiKind,
 };
 
 /// A modal dialog.
@@ -152,8 +153,14 @@ impl<T> ModalResponse<T> {
         let ctx = &self.response.ctx;
 
         // this is a closure so that `Esc` is consumed only if the modal is topmost
-        let escape_clicked =
-            || ctx.input_mut(|i| i.consume_key(crate::ModifierPattern::NONE, crate::Key::Escape));
+        let escape_clicked = || {
+            ctx.input_mut(|i| {
+                i.consume_key(
+                    crate::ModifierPattern::NONE,
+                    &crate::Key::Named(NamedKey::Escape),
+                )
+            })
+        };
 
         let ui_close_called = self.response.should_close();
 

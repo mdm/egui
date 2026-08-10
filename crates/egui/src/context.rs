@@ -17,10 +17,10 @@ use epaint::{
 
 use crate::{
     Align2, CursorIcon, DeferredViewportUiCallback, FontDefinitions, Grid, Id, ImmediateViewport,
-    ImmediateViewportRendererCallback, Key, KeyboardShortcut, Label, LayerId, Memory,
-    ModifierNames, ModifierPattern, NumExt as _, Order, Painter, RawInput, Response, RichText,
-    SafeAreaInsets, ScrollArea, Sense, Style, TextStyle, TextureHandle, TextureOptions, Ui,
-    UiBuilder, ViewportBuilder, ViewportCommand, ViewportId, ViewportIdMap, ViewportIdPair,
+    ImmediateViewportRendererCallback, Key, KeyExt as _, KeyboardShortcut, Label, LayerId, Memory,
+    ModifierNames, ModifierPattern, NamedKey, NumExt as _, Order, Painter, RawInput, Response,
+    RichText, SafeAreaInsets, ScrollArea, Sense, Style, TextStyle, TextureHandle, TextureOptions,
+    Ui, UiBuilder, ViewportBuilder, ViewportCommand, ViewportId, ViewportIdMap, ViewportIdPair,
     ViewportIdSet, ViewportOutput, Visuals, Widget as _, WidgetRect, WidgetText,
     animation_manager::AnimationManager,
     containers::{self, area::AreaState},
@@ -685,7 +685,8 @@ impl ContextImpl {
 ///
 /// ```
 /// # let ctx = egui::Context::default();
-/// if ctx.input(|i| i.key_pressed(egui::Key::A)) {
+/// # use egui::KeyExt as _;
+/// if ctx.input(|i| i.key_pressed(&egui::Key::character('a'))) {
 ///     ctx.copy_text("Hello!".to_owned());
 /// }
 /// ```
@@ -1466,7 +1467,8 @@ impl Context {
             if enabled
                 && sense.senses_click()
                 && memory.has_focus(id)
-                && (input.key_pressed(Key::Space) || input.key_pressed(Key::Enter))
+                && (input.key_pressed(&Key::character(' '))
+                    || input.key_pressed(&Key::Named(NamedKey::Enter)))
             {
                 // Space/enter works like a primary click for e.g. selected buttons
                 res.flags.set(Flags::FAKE_PRIMARY_CLICKED, true);

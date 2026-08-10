@@ -6,9 +6,9 @@ use epaint::text::{Galley, LayoutJob, TextWrapMode, cursor::CCursor};
 use crate::{
     Align, Align2, AsIdSalt, AtomExt as _, AtomKind, AtomLayout, Atoms, Color32, Context,
     CursorIcon, Event, EventFilter, FontSelection, Frame, IMEPurpose, Id, IdSalt, ImeEvent,
-    IntoAtoms, IntoSizedResult, Key, KeyboardShortcut, Margin, ModifierPattern, Modifiers,
-    ModifiersExt as _, NumExt as _, Response, Sense, SizedAtomKind, TextBuffer, TextStyle, Ui,
-    Vec2, Widget, WidgetInfo, WidgetWithState, epaint,
+    IntoAtoms, IntoSizedResult, Key, KeyExt as _, KeyboardShortcut, Margin, ModifierPattern,
+    Modifiers, ModifiersExt as _, NamedKey, NumExt as _, Response, Sense, SizedAtomKind,
+    TextBuffer, TextStyle, Ui, Vec2, Widget, WidgetInfo, WidgetWithState, epaint,
     os::OperatingSystem,
     output::OutputEvent,
     response,
@@ -36,7 +36,8 @@ type LayouterFn<'t> = &'t mut dyn FnMut(&Ui, &dyn TextBuffer, f32) -> Arc<Galley
 /// if response.changed() {
 ///     // …
 /// }
-/// if response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+/// # use egui::NamedKey;
+/// if response.lost_focus() && ui.input(|i| i.key_pressed(&egui::Key::Named(NamedKey::Enter))) {
 ///     // …
 /// }
 /// # });
@@ -150,7 +151,10 @@ impl<'t> TextEdit<'t> {
             align: Align2::LEFT_TOP,
             clip_text: false,
             char_limit: usize::MAX,
-            return_key: Some(KeyboardShortcut::new(ModifierPattern::NONE, Key::Enter)),
+            return_key: Some(KeyboardShortcut::new(
+                ModifierPattern::NONE,
+                Key::Named(NamedKey::Enter),
+            )),
             background_color: None,
         }
     }
@@ -551,7 +555,7 @@ impl TextEdit<'_> {
         let mut text_changed = false;
         let text_mutable = text.is_mutable();
 
-        let mut handle_events = |ui: &Ui, galley: &mut Arc<Galley>, layouter, wrap_width, text| {
+        let handle_events = |ui: &Ui, galley: &mut Arc<Galley>, layouter, wrap_width, text| {
             if interactive && ui.memory(|mem| mem.has_focus(id)) {
                 ui.memory_mut(|mem| mem.set_focus_lock_filter(id, event_filter));
 
@@ -1056,8 +1060,11 @@ fn events(
         owns_ime_events,
         char_limit,
         event_filter,
-        return_key,
+        // Not bound here: `KeyboardShortcut` is no longer `Copy`, so binding it
+        // would move out of `*opts`. Borrowed separately below.
+        return_key: _,
     } = *opts;
+    let return_key = opts.return_key.as_ref();
 
     let os = ui.os();
 
@@ -1126,7 +1133,7 @@ fn events(
                 }
             }
             Event::Text(text_to_insert) => {
-                // Newlines are handled by `Key::Enter`.
+                // Newlines are handled by `Key::Named(NamedKey::Enter)`.
                 if !text_to_insert.is_empty() && text_to_insert != "\n" && text_to_insert != "\r" {
                     let mut ccursor = text.delete_selected(&cursor_range);
 
@@ -1138,7 +1145,7 @@ fn events(
                 }
             }
             Event::Key {
-                key: Key::Tab,
+                key: Key::Named(NamedKey::Tab),
                 pressed: true,
                 modifiers,
                 ..
@@ -1157,8 +1164,8 @@ fn events(
                 pressed: true,
                 modifiers,
                 ..
-            } if return_key.is_some_and(|return_key| {
-                *key == return_key.logical_key
+            } if return_key.as_ref().is_some_and(|return_key| {
+                key.matches(&return_key.logical_key)
                     && return_key.modifiers.matches_logically(*modifiers, os)
             }) =>
             {
@@ -1178,10 +1185,11 @@ fn events(
                 pressed: true,
                 modifiers,
                 ..
-            } if (ModifierPattern::COMMAND.matches_logically(*modifiers, os) && *key == Key::Y)
+            } if (ModifierPattern::COMMAND.matches_logically(*modifiers, os)
+                && key.is_char('y'))
                 || ((ModifierPattern::SHIFT | ModifierPattern::COMMAND)
                     .matches_logically(*modifiers, os)
-                    && *key == Key::Z) =>
+                    && key.is_char('z')) =>
             {
                 if let Some((redo_ccursor_range, redo_txt)) = state
                     .undoer
@@ -1196,11 +1204,11 @@ fn events(
             }
 
             Event::Key {
-                key: Key::Z,
+                key,
                 pressed: true,
                 modifiers,
                 ..
-            } if ModifierPattern::COMMAND.matches_logically(*modifiers, os) => {
+            } if key.is_char('z') && ModifierPattern::COMMAND.matches_logically(*modifiers, os) => {
                 if let Some((undo_ccursor_range, undo_txt)) = state
                     .undoer
                     .lock()
@@ -1218,7 +1226,7 @@ fn events(
                 key,
                 pressed: true,
                 ..
-            } => check_for_mutating_key_press(os, &cursor_range, text, galley, modifiers, *key)
+            } => check_for_mutating_key_press(os, &cursor_range, text, galley, modifiers, key)
                 .map(CursorMutation::Selection),
             Event::Ime(ime_event) if owns_ime_events => {
                 /// Both `ImeEvent::Preedit("")` and `ImeEvent::Commit("")`
@@ -1374,10 +1382,10 @@ fn check_for_mutating_key_press(
     text: &mut dyn TextBuffer,
     galley: &Galley,
     modifiers: &Modifiers,
-    key: Key,
+    key: &Key,
 ) -> Option<CCursorRange> {
-    match key {
-        Key::Backspace => {
+    match (key.named(), key.as_char()) {
+        (Some(NamedKey::Backspace), _) => {
             let ccursor = if modifiers.mac_cmd(os) {
                 text.delete_paragraph_before_cursor(galley, cursor_range)
             } else if let Some(cursor) = cursor_range.single() {
@@ -1393,7 +1401,7 @@ fn check_for_mutating_key_press(
             Some(CCursorRange::one(ccursor))
         }
 
-        Key::Delete if !modifiers.shift() || os != OperatingSystem::Windows => {
+        (Some(NamedKey::Delete), _) if !modifiers.shift() || os != OperatingSystem::Windows => {
             let ccursor = if modifiers.mac_cmd(os) {
                 text.delete_paragraph_after_cursor(galley, cursor_range)
             } else if let Some(cursor) = cursor_range.single() {
@@ -1413,22 +1421,22 @@ fn check_for_mutating_key_press(
             Some(CCursorRange::one(ccursor))
         }
 
-        Key::H if modifiers.ctrl() => {
+        (_, Some('h')) if modifiers.ctrl() => {
             let ccursor = text.delete_previous_char(cursor_range.primary);
             Some(CCursorRange::one(ccursor))
         }
 
-        Key::K if modifiers.ctrl() => {
+        (_, Some('k')) if modifiers.ctrl() => {
             let ccursor = text.delete_paragraph_after_cursor(galley, cursor_range);
             Some(CCursorRange::one(ccursor))
         }
 
-        Key::U if modifiers.ctrl() => {
+        (_, Some('u')) if modifiers.ctrl() => {
             let ccursor = text.delete_paragraph_before_cursor(galley, cursor_range);
             Some(CCursorRange::one(ccursor))
         }
 
-        Key::W if modifiers.ctrl() => {
+        (_, Some('w')) if modifiers.ctrl() => {
             let ccursor = if let Some(cursor) = cursor_range.single() {
                 text.delete_previous_word(cursor)
             } else {

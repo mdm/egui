@@ -1,3 +1,5 @@
+use egui::KeyExt as _;
+
 use super::{AppRunner, canvas_content_rect};
 
 pub fn pos_from_mouse_event(

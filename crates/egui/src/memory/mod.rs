@@ -6,8 +6,8 @@ use ahash::{HashMap, HashSet};
 use epaint::emath::TSTransform;
 
 use crate::{
-    EventFilter, Id, IdMap, LayerId, ModifiersExt as _, Order, Pos2, Rangef, RawInput, Rect, Style,
-    Vec2, ViewportId, ViewportIdMap, ViewportIdSet, area, vec2,
+    EventFilter, Id, IdMap, KeyExt as _, LayerId, ModifiersExt as _, NamedKey, Order, Pos2, Rangef,
+    RawInput, Rect, Style, Vec2, ViewportId, ViewportIdMap, ViewportIdSet, area, vec2,
 };
 
 mod theme;
@@ -335,7 +335,7 @@ impl Default for Options {
             zoom_with_keyboard: true,
             quit_shortcuts: vec![crate::KeyboardShortcut::new(
                 crate::ModifierPattern::COMMAND,
-                crate::Key::Q,
+                crate::Key::character('q'),
             )],
             tessellation_options: Default::default(),
             repaint_on_widget_change: false,
@@ -588,15 +588,27 @@ impl Focus {
                     ..
                 } = event
                 && let Some(cardinality) = match key {
-                    crate::Key::ArrowUp if !modifiers.any() => Some(FocusDirection::Up),
-                    crate::Key::ArrowRight if !modifiers.any() => Some(FocusDirection::Right),
-                    crate::Key::ArrowDown if !modifiers.any() => Some(FocusDirection::Down),
-                    crate::Key::ArrowLeft if !modifiers.any() => Some(FocusDirection::Left),
+                    crate::Key::Named(NamedKey::ArrowUp) if !modifiers.any() => {
+                        Some(FocusDirection::Up)
+                    }
+                    crate::Key::Named(NamedKey::ArrowRight) if !modifiers.any() => {
+                        Some(FocusDirection::Right)
+                    }
+                    crate::Key::Named(NamedKey::ArrowDown) if !modifiers.any() => {
+                        Some(FocusDirection::Down)
+                    }
+                    crate::Key::Named(NamedKey::ArrowLeft) if !modifiers.any() => {
+                        Some(FocusDirection::Left)
+                    }
 
-                    crate::Key::Tab if !modifiers.any() => Some(FocusDirection::Next),
-                    crate::Key::Tab if modifiers.shift_only() => Some(FocusDirection::Previous),
+                    crate::Key::Named(NamedKey::Tab) if !modifiers.any() => {
+                        Some(FocusDirection::Next)
+                    }
+                    crate::Key::Named(NamedKey::Tab) if modifiers.shift_only() => {
+                        Some(FocusDirection::Previous)
+                    }
 
-                    crate::Key::Escape if !modifiers.any() => {
+                    crate::Key::Named(NamedKey::Escape) if !modifiers.any() => {
                         self.focused_widget = None;
                         Some(FocusDirection::None)
                     }

@@ -2,7 +2,7 @@ mod touch_state;
 mod wheel_state;
 
 use crate::{
-    SafeAreaInsets,
+    KeyExt as _, SafeAreaInsets,
     emath::{NumExt as _, Pos2, Rect, Vec2, vec2},
     os::OperatingSystem,
     util::History,
@@ -326,7 +326,7 @@ pub struct InputState {
     /// Keys released this frame are NOT considered down.
     ///
     /// These are *logical* keys, so the numpad Enter shows up here as
-    /// [`Key::Enter`]. See [`Self::codes_down`] for the physical keys.
+    /// [`Key::Named(NamedKey::Enter)`]. See [`Self::codes_down`] for the physical keys.
     pub keys_down: HashSet<Key>,
 
     /// The physical keys that are currently being held down.
@@ -429,7 +429,7 @@ impl InputState {
                     if *pressed {
                         // NOTE: `repeat` is derived from the logical key only, so that
                         // it keeps working for integrations that don't report a physical key.
-                        let first_press = keys_down.insert(*key);
+                        let first_press = keys_down.insert(key.clone());
                         *repeat = !first_press;
                         if let Some(physical_key) = *physical_key {
                             codes_down.insert(physical_key);
@@ -723,7 +723,11 @@ impl InputState {
     /// Therefore, you should match most specific shortcuts first,
     /// i.e. check for `Cmd-Shift-S` ("Save as…") before `Cmd-S` ("Save"),
     /// so that a user pressing `Cmd-Shift-S` won't trigger the wrong command!
-    pub fn count_and_consume_key(&mut self, modifiers: ModifierPattern, logical_key: Key) -> usize {
+    pub fn count_and_consume_key(
+        &mut self,
+        modifiers: ModifierPattern,
+        logical_key: &Key,
+    ) -> usize {
         let mut count = 0usize;
         let os = self.os;
 
@@ -735,7 +739,7 @@ impl InputState {
                     modifiers: ev_mods,
                     pressed: true,
                     ..
-                } if *ev_key == logical_key && modifiers.matches_logically(*ev_mods, os)
+                } if ev_key.matches(logical_key) && modifiers.matches_logically(*ev_mods, os)
             );
 
             count += is_match as usize;
@@ -755,7 +759,7 @@ impl InputState {
     /// Therefore, you should match most specific shortcuts first,
     /// i.e. check for `Cmd-Shift-S` ("Save as…") before `Cmd-S` ("Save"),
     /// so that a user pressing `Cmd-Shift-S` won't trigger the wrong command!
-    pub fn consume_key(&mut self, modifiers: ModifierPattern, logical_key: Key) -> bool {
+    pub fn consume_key(&mut self, modifiers: ModifierPattern, logical_key: &Key) -> bool {
         self.count_and_consume_key(modifiers, logical_key) > 0
     }
 
@@ -772,28 +776,28 @@ impl InputState {
         let KeyboardShortcut {
             modifiers,
             logical_key,
-        } = *shortcut;
-        self.consume_key(modifiers, logical_key)
+        } = shortcut;
+        self.consume_key(*modifiers, logical_key)
     }
 
     /// Was the given key pressed this frame?
     ///
     /// Includes key-repeat events.
-    pub fn key_pressed(&self, desired_key: Key) -> bool {
+    pub fn key_pressed(&self, desired_key: &Key) -> bool {
         self.num_presses(desired_key) > 0
     }
 
     /// How many times was the given key pressed this frame?
     ///
     /// Includes key-repeat events.
-    pub fn num_presses(&self, desired_key: Key) -> usize {
+    pub fn num_presses(&self, desired_key: &Key) -> usize {
         self.events
             .iter()
             .filter(|event| {
                 matches!(
                     event,
                     Event::Key { key, pressed: true, .. }
-                    if *key == desired_key
+                    if key.matches(desired_key)
                 )
             })
             .count()
@@ -802,12 +806,12 @@ impl InputState {
     /// Is the given key currently held down?
     ///
     /// Keys released this frame are NOT considered down.
-    pub fn key_down(&self, desired_key: Key) -> bool {
-        self.keys_down.contains(&desired_key)
+    pub fn key_down(&self, desired_key: &Key) -> bool {
+        self.keys_down.contains(desired_key)
     }
 
     /// Was the given key released this frame?
-    pub fn key_released(&self, desired_key: Key) -> bool {
+    pub fn key_released(&self, desired_key: &Key) -> bool {
         self.events.iter().any(|event| {
             matches!(
                 event,
@@ -815,7 +819,7 @@ impl InputState {
                     key,
                     pressed: false,
                     ..
-                } if *key == desired_key
+                } if key.matches(desired_key)
             )
         })
     }

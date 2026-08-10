@@ -11,6 +11,7 @@ pub struct Node<'tree> {
     pub(crate) accesskit_node: AccessKitNode<'tree>,
     pub(crate) queue: &'tree EventQueue,
     pub(crate) pixels_per_point: f32,
+
     /// Needed to resolve [`ModifierPattern::COMMAND`] into ⌘ or Ctrl.
     pub(crate) os: OperatingSystem,
 }

@@ -1,7 +1,8 @@
 use egui::{
-    Key, KeyboardShortcut, ModifierPattern, ScrollArea, TextBuffer, TextEdit, Ui,
+    Key, KeyExt as _, KeyboardShortcut, ModifierPattern, ScrollArea, TextBuffer, TextEdit, Ui,
     text::CCursorRange,
 };
+use std::sync::LazyLock;
 
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(default))]
@@ -109,37 +110,51 @@ impl EasyMarkEditor {
     }
 }
 
-pub const SHORTCUT_BOLD: KeyboardShortcut = KeyboardShortcut::new(ModifierPattern::COMMAND, Key::B);
-pub const SHORTCUT_CODE: KeyboardShortcut = KeyboardShortcut::new(ModifierPattern::COMMAND, Key::N);
-pub const SHORTCUT_ITALICS: KeyboardShortcut =
-    KeyboardShortcut::new(ModifierPattern::COMMAND, Key::I);
-pub const SHORTCUT_SUBSCRIPT: KeyboardShortcut =
-    KeyboardShortcut::new(ModifierPattern::COMMAND, Key::L);
-pub const SHORTCUT_SUPERSCRIPT: KeyboardShortcut =
-    KeyboardShortcut::new(ModifierPattern::COMMAND, Key::Y);
-pub const SHORTCUT_STRIKETHROUGH: KeyboardShortcut =
-    KeyboardShortcut::new(ModifierPattern::CTRL.plus(ModifierPattern::SHIFT), Key::Q);
-pub const SHORTCUT_UNDERLINE: KeyboardShortcut =
-    KeyboardShortcut::new(ModifierPattern::CTRL.plus(ModifierPattern::SHIFT), Key::W);
-pub const SHORTCUT_INDENT: KeyboardShortcut =
-    KeyboardShortcut::new(ModifierPattern::CTRL.plus(ModifierPattern::SHIFT), Key::E);
+pub static SHORTCUT_BOLD: LazyLock<KeyboardShortcut> =
+    LazyLock::new(|| KeyboardShortcut::new(ModifierPattern::COMMAND, Key::character('b')));
+pub static SHORTCUT_CODE: LazyLock<KeyboardShortcut> =
+    LazyLock::new(|| KeyboardShortcut::new(ModifierPattern::COMMAND, Key::character('n')));
+pub static SHORTCUT_ITALICS: LazyLock<KeyboardShortcut> =
+    LazyLock::new(|| KeyboardShortcut::new(ModifierPattern::COMMAND, Key::character('i')));
+pub static SHORTCUT_SUBSCRIPT: LazyLock<KeyboardShortcut> =
+    LazyLock::new(|| KeyboardShortcut::new(ModifierPattern::COMMAND, Key::character('l')));
+pub static SHORTCUT_SUPERSCRIPT: LazyLock<KeyboardShortcut> =
+    LazyLock::new(|| KeyboardShortcut::new(ModifierPattern::COMMAND, Key::character('y')));
+pub static SHORTCUT_STRIKETHROUGH: LazyLock<KeyboardShortcut> = LazyLock::new(|| {
+    KeyboardShortcut::new(
+        ModifierPattern::CTRL.plus(ModifierPattern::SHIFT),
+        Key::character('q'),
+    )
+});
+pub static SHORTCUT_UNDERLINE: LazyLock<KeyboardShortcut> = LazyLock::new(|| {
+    KeyboardShortcut::new(
+        ModifierPattern::CTRL.plus(ModifierPattern::SHIFT),
+        Key::character('w'),
+    )
+});
+pub static SHORTCUT_INDENT: LazyLock<KeyboardShortcut> = LazyLock::new(|| {
+    KeyboardShortcut::new(
+        ModifierPattern::CTRL.plus(ModifierPattern::SHIFT),
+        Key::character('e'),
+    )
+});
 
 fn nested_hotkeys_ui(ui: &mut egui::Ui) {
     egui::Grid::new("shortcuts").striped(true).show(ui, |ui| {
-        let mut label = |shortcut, what| {
+        let mut label = |shortcut: &KeyboardShortcut, what| {
             ui.label(what);
-            ui.weak(ui.ctx().format_shortcut(&shortcut));
+            ui.weak(ui.ctx().format_shortcut(shortcut));
             ui.end_row();
         };
 
-        label(SHORTCUT_BOLD, "*bold*");
-        label(SHORTCUT_CODE, "`code`");
-        label(SHORTCUT_ITALICS, "/italics/");
-        label(SHORTCUT_SUBSCRIPT, "$subscript$");
-        label(SHORTCUT_SUPERSCRIPT, "^superscript^");
-        label(SHORTCUT_STRIKETHROUGH, "~strikethrough~");
-        label(SHORTCUT_UNDERLINE, "_underline_");
-        label(SHORTCUT_INDENT, "two spaces"); // Placeholder for tab indent
+        label(&SHORTCUT_BOLD, "*bold*");
+        label(&SHORTCUT_CODE, "`code`");
+        label(&SHORTCUT_ITALICS, "/italics/");
+        label(&SHORTCUT_SUBSCRIPT, "$subscript$");
+        label(&SHORTCUT_SUPERSCRIPT, "^superscript^");
+        label(&SHORTCUT_STRIKETHROUGH, "~strikethrough~");
+        label(&SHORTCUT_UNDERLINE, "_underline_");
+        label(&SHORTCUT_INDENT, "two spaces"); // Placeholder for tab indent
     });
 }
 
@@ -157,15 +172,15 @@ fn shortcuts(ui: &Ui, code: &mut dyn TextBuffer, ccursor_range: &mut CCursorRang
     }
 
     for (shortcut, surrounding) in [
-        (SHORTCUT_BOLD, "*"),
-        (SHORTCUT_CODE, "`"),
-        (SHORTCUT_ITALICS, "/"),
-        (SHORTCUT_SUBSCRIPT, "$"),
-        (SHORTCUT_SUPERSCRIPT, "^"),
-        (SHORTCUT_STRIKETHROUGH, "~"),
-        (SHORTCUT_UNDERLINE, "_"),
+        (&SHORTCUT_BOLD, "*"),
+        (&SHORTCUT_CODE, "`"),
+        (&SHORTCUT_ITALICS, "/"),
+        (&SHORTCUT_SUBSCRIPT, "$"),
+        (&SHORTCUT_SUPERSCRIPT, "^"),
+        (&SHORTCUT_STRIKETHROUGH, "~"),
+        (&SHORTCUT_UNDERLINE, "_"),
     ] {
-        if ui.input_mut(|i| i.consume_shortcut(&shortcut)) {
+        if ui.input_mut(|i| i.consume_shortcut(shortcut)) {
             any_change = true;
             toggle_surrounding(code, ccursor_range, surrounding);
         }
