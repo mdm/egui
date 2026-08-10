@@ -6,7 +6,7 @@ use crate::View as _;
 use crate::is_mobile;
 use egui::containers::menu;
 use egui::style::StyleModifier;
-use egui::{Modifiers, ScrollArea, Ui};
+use egui::{ModifierPattern, ScrollArea, Ui};
 // ----------------------------------------------------------------------------
 
 struct DemoGroup {
@@ -340,9 +340,9 @@ impl DemoWindows {
 
 fn file_menu_button(ui: &mut Ui) {
     let organize_shortcut =
-        egui::KeyboardShortcut::new(Modifiers::CTRL | Modifiers::SHIFT, egui::Key::O);
+        egui::KeyboardShortcut::new(ModifierPattern::CTRL | ModifierPattern::SHIFT, egui::Key::O);
     let reset_shortcut =
-        egui::KeyboardShortcut::new(Modifiers::CTRL | Modifiers::SHIFT, egui::Key::R);
+        egui::KeyboardShortcut::new(ModifierPattern::CTRL | ModifierPattern::SHIFT, egui::Key::R);
 
     // NOTE: we must check the shortcuts OUTSIDE of the actual "File" menu,
     // or else they would only be checked if the "File" menu was actually open!

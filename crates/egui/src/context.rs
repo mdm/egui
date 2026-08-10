@@ -18,7 +18,7 @@ use epaint::{
 use crate::{
     Align2, CursorIcon, DeferredViewportUiCallback, FontDefinitions, Grid, Id, ImmediateViewport,
     ImmediateViewportRendererCallback, Key, KeyboardShortcut, Label, LayerId, Memory,
-    ModifierNames, Modifiers, NumExt as _, Order, Painter, RawInput, Response, RichText,
+    ModifierNames, ModifierPattern, NumExt as _, Order, Painter, RawInput, Response, RichText,
     SafeAreaInsets, ScrollArea, Sense, Style, TextStyle, TextureHandle, TextureOptions, Ui,
     UiBuilder, ViewportBuilder, ViewportCommand, ViewportId, ViewportIdMap, ViewportIdPair,
     ViewportIdSet, ViewportOutput, Visuals, Widget as _, WidgetRect, WidgetText,
@@ -465,6 +465,7 @@ impl ContextImpl {
             viewport.repaint.requested_immediate_repaint_prev_pass(),
             pixels_per_point,
             self.memory.options.input_options,
+            self.os,
         );
         let repaint_after = viewport.input.wants_repaint_after();
 
@@ -1714,7 +1715,7 @@ impl Context {
     }
 
     /// Format the given modifiers in a human-readable way (e.g. `Ctrl+Shift+X`).
-    pub fn format_modifiers(&self, modifiers: Modifiers) -> String {
+    pub fn format_modifiers(&self, modifiers: ModifierPattern) -> String {
         let os = self.os();
 
         let is_mac = os.is_mac();

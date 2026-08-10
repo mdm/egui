@@ -78,7 +78,7 @@ impl TextCursorState {
         } else if response.sense.senses_drag() {
             if response.hovered() && ui.input(|i| i.pointer.any_pressed()) {
                 // The start of a drag (or a click).
-                if ui.input(|i| i.modifiers.shift) {
+                if ui.input(|i| i.modifiers.shift()) {
                     if let Some(mut cursor_range) = self.range(galley) {
                         cursor_range.primary = cursor_at_pointer;
                         self.set_char_range(Some(cursor_range));

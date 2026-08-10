@@ -2,8 +2,8 @@ use core::any::Any;
 use std::sync::Arc;
 
 use crate::{
-    Context, CursorIcon, Id, LayerId, PointerButton, Popup, PopupKind, Sense, Tooltip, Ui,
-    WidgetRect, WidgetText,
+    Context, CursorIcon, Id, LayerId, ModifiersExt as _, PointerButton, Popup, PopupKind, Sense,
+    Tooltip, Ui, WidgetRect, WidgetText,
     emath::{Align, Pos2, Rect, Vec2},
     pass_state,
 };

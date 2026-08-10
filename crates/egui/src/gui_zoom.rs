@@ -1,13 +1,14 @@
 //! Helpers for zooming the whole GUI of an app (changing [`Context::pixels_per_point`]).
 //!
-use crate::{Button, Context, Key, KeyboardShortcut, Modifiers, Ui};
+use crate::{Button, Context, Key, KeyboardShortcut, ModifierPattern, Ui};
 
 /// The suggested keyboard shortcuts for global gui zooming.
 pub mod kb_shortcuts {
-    use super::{Key, KeyboardShortcut, Modifiers};
+    use super::{Key, KeyboardShortcut, ModifierPattern};
 
     /// Primary keyboard shortcut for zooming in (`Cmd` + `+`).
-    pub const ZOOM_IN: KeyboardShortcut = KeyboardShortcut::new(Modifiers::COMMAND, Key::Plus);
+    pub const ZOOM_IN: KeyboardShortcut =
+        KeyboardShortcut::new(ModifierPattern::COMMAND, Key::Plus);
 
     /// Secondary keyboard shortcut for zooming in (`Cmd` + `=`).
     ///
@@ -16,13 +17,15 @@ pub mod kb_shortcuts {
     /// So most browsers also allow `Cmd` + `=` for zooming in.
     /// We do the same.
     pub const ZOOM_IN_SECONDARY: KeyboardShortcut =
-        KeyboardShortcut::new(Modifiers::COMMAND, Key::Equals);
+        KeyboardShortcut::new(ModifierPattern::COMMAND, Key::Equals);
 
     /// Keyboard shortcut for zooming in (`Cmd` + `-`).
-    pub const ZOOM_OUT: KeyboardShortcut = KeyboardShortcut::new(Modifiers::COMMAND, Key::Minus);
+    pub const ZOOM_OUT: KeyboardShortcut =
+        KeyboardShortcut::new(ModifierPattern::COMMAND, Key::Minus);
 
     /// Keyboard shortcut for resetting zoom in (`Cmd` + `0`).
-    pub const ZOOM_RESET: KeyboardShortcut = KeyboardShortcut::new(Modifiers::COMMAND, Key::Num0);
+    pub const ZOOM_RESET: KeyboardShortcut =
+        KeyboardShortcut::new(ModifierPattern::COMMAND, Key::Num0);
 }
 
 /// Let the user scale the GUI (change [`Context::zoom_factor`]) by pressing

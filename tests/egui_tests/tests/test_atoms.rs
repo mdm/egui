@@ -221,7 +221,7 @@ fn test_atom_selectable_senses_click_and_drag() {
 #[test]
 fn test_atom_selectable_text_can_be_copied() {
     use core::cell::Cell;
-    use egui::{AtomLayout, Event, Modifiers, OutputCommand, PointerButton, Pos2, Rect};
+    use egui::{AtomLayout, Event, OutputCommand, PointerButton, Pos2, Rect};
 
     fn copied_text(selectable: bool) -> Option<String> {
         let rect_cell = Cell::new(Rect::NOTHING);
@@ -245,7 +245,7 @@ fn test_atom_selectable_text_can_be_copied() {
             pos: left,
             button: PointerButton::Primary,
             pressed: true,
-            modifiers: Modifiers::NONE,
+            modifiers: egui::Modifiers::empty(),
         });
         harness.run();
         harness.event(Event::PointerMoved(right));

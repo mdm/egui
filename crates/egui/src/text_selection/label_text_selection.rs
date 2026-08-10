@@ -198,7 +198,7 @@ impl LabelSelectionState {
 
 impl ViewportLabelSelectionState {
     fn on_begin_pass(&mut self, ui: &Ui) {
-        if ui.input(|i| i.pointer.any_pressed() && !i.modifiers.shift) {
+        if ui.input(|i| i.pointer.any_pressed() && !i.modifiers.shift()) {
             // Maybe a new selection is about to begin, but the old one is over:
             // state.selection = None; // TODO(emilk): this makes sense, but doesn't work as expected.
         }
@@ -413,7 +413,7 @@ impl ViewportLabelSelectionState {
                 let drag_started = ui.input(|i| i.pointer.any_pressed());
                 if drag_started {
                     if selection.layer_id == response.layer_id {
-                        if ui.input(|i| i.modifiers.shift) {
+                        if ui.input(|i| i.modifiers.shift()) {
                             // A continuation of a previous selection.
                         } else {
                             // A new selection in the same layer.

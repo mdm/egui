@@ -32,7 +32,8 @@ use core::{
 };
 
 use egui::{
-    Color32, Key, Modifiers, PointerButton, Pos2, Rect, RepaintCause, Shape, Vec2, ViewportId,
+    Color32, Key, ModifierPattern, Modifiers, PointerButton, Pos2, Rect, RepaintCause, Shape, Vec2,
+    ViewportId,
     epaint::{ClippedShape, RectShape},
     style::ScrollAnimation,
 };
@@ -465,38 +466,46 @@ impl<'a, State> Harness<'a, State> {
         self.queued_events.lock().push(event);
     }
 
+    /// The concrete modifier state a user would hold to satisfy `pattern`,
+    /// resolved against the OS this harness is running as.
+    ///
+    /// This is what lets a test say "command" and get ⌘ on Mac and Ctrl elsewhere.
+    fn realize(&self, pattern: ModifierPattern) -> Modifiers {
+        pattern.to_modifiers(self.ctx.os())
+    }
+
     /// Queue an event with modifiers.
     ///
     /// Queues the modifiers to be pressed, then the event, then the modifiers to be released.
-    pub fn event_modifiers(&self, event: egui::Event, modifiers: Modifiers) {
+    pub fn event_modifiers(&self, event: egui::Event, modifiers: ModifierPattern) {
         let mut queue = self.queued_events.lock();
-        queue.push(egui::Event::ModifiersChanged(modifiers));
+        queue.push(egui::Event::ModifiersChanged(self.realize(modifiers)));
         queue.push(event);
-        queue.push(egui::Event::ModifiersChanged(Modifiers::default()));
+        queue.push(egui::Event::ModifiersChanged(Modifiers::empty()));
     }
 
-    fn modifiers(&self, modifiers: Modifiers) {
+    fn modifiers(&self, modifiers: ModifierPattern) {
         self.queued_events
             .lock()
-            .push(egui::Event::ModifiersChanged(modifiers));
+            .push(egui::Event::ModifiersChanged(self.realize(modifiers)));
     }
 
     pub fn key_down(&self, key: egui::Key) {
         self.event(egui::Event::Key {
             key,
             pressed: true,
-            modifiers: Modifiers::default(),
+            modifiers: Modifiers::empty(),
             repeat: false,
             physical_key: None,
         });
     }
 
-    pub fn key_down_modifiers(&self, modifiers: Modifiers, key: egui::Key) {
+    pub fn key_down_modifiers(&self, modifiers: ModifierPattern, key: egui::Key) {
         self.event_modifiers(
             egui::Event::Key {
                 key,
                 pressed: true,
-                modifiers,
+                modifiers: self.realize(modifiers),
                 repeat: false,
                 physical_key: None,
             },
@@ -508,18 +517,18 @@ impl<'a, State> Harness<'a, State> {
         self.event(egui::Event::Key {
             key,
             pressed: false,
-            modifiers: Modifiers::default(),
+            modifiers: Modifiers::empty(),
             repeat: false,
             physical_key: None,
         });
     }
 
-    pub fn key_up_modifiers(&self, modifiers: Modifiers, key: egui::Key) {
+    pub fn key_up_modifiers(&self, modifiers: ModifierPattern, key: egui::Key) {
         self.event_modifiers(
             egui::Event::Key {
                 key,
                 pressed: false,
-                modifiers,
+                modifiers: self.realize(modifiers),
                 repeat: false,
                 physical_key: None,
             },
@@ -545,14 +554,14 @@ impl<'a, State> Harness<'a, State> {
 
     /// Press the given keys in combination, with modifiers.
     ///
-    /// For e.g. [`Modifiers::COMMAND`] + [`Key::A`] + [`Key::B`] this would generate:
-    /// - Press [`Modifiers::COMMAND`]
+    /// For e.g. [`ModifierPattern::COMMAND`] + [`Key::A`] + [`Key::B`] this would generate:
+    /// - Press [`ModifierPattern::COMMAND`]
     /// - Press [`Key::A`]
     /// - Press [`Key::B`]
     /// - Release [`Key::B`]
     /// - Release [`Key::A`]
-    /// - Release [`Modifiers::COMMAND`]
-    pub fn key_combination_modifiers(&self, modifiers: Modifiers, keys: &[Key]) {
+    /// - Release [`ModifierPattern::COMMAND`]
+    pub fn key_combination_modifiers(&self, modifiers: ModifierPattern, keys: &[Key]) {
         self.modifiers(modifiers);
 
         for pressed in [true, false] {
@@ -560,14 +569,14 @@ impl<'a, State> Harness<'a, State> {
                 self.event(egui::Event::Key {
                     key: *key,
                     pressed,
-                    modifiers,
+                    modifiers: self.realize(modifiers),
                     repeat: false,
                     physical_key: None,
                 });
             }
         }
 
-        self.modifiers(Modifiers::default());
+        self.modifiers(ModifierPattern::NONE);
     }
 
     /// Press a key.
@@ -584,7 +593,7 @@ impl<'a, State> Harness<'a, State> {
     /// - create a key down event
     /// - create a key up event
     /// - reset the modifiers
-    pub fn key_press_modifiers(&self, modifiers: Modifiers, key: egui::Key) {
+    pub fn key_press_modifiers(&self, modifiers: ModifierPattern, key: egui::Key) {
         self.key_combination_modifiers(modifiers, &[key]);
     }
 
@@ -599,7 +608,7 @@ impl<'a, State> Harness<'a, State> {
             pos,
             button: PointerButton::Primary,
             pressed: true,
-            modifiers: Modifiers::NONE,
+            modifiers: Modifiers::empty(),
         });
     }
 
@@ -609,7 +618,7 @@ impl<'a, State> Harness<'a, State> {
             pos,
             button: PointerButton::Primary,
             pressed: false,
-            modifiers: Modifiers::NONE,
+            modifiers: Modifiers::empty(),
         });
         self.remove_cursor();
     }
@@ -760,6 +769,7 @@ impl<'a, State> Harness<'a, State> {
             self.kittest.root(),
             &self.queued_events,
             self.ctx.pixels_per_point(),
+            self.ctx.os(),
         )
     }
 

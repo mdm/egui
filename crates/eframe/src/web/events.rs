@@ -153,8 +153,7 @@ fn install_keydown(runner_ref: &WebRunner, target: &EventTarget) -> Result<(), J
             }
 
             let modifiers = modifiers_from_kb_event(&event);
-            if !modifiers.ctrl
-                && !modifiers.command
+            if !modifiers.intersects(egui::Modifiers::CONTROL | egui::Modifiers::META)
                 // When text agent is focused, it is responsible for handling input events
                 && !runner.text_agent.has_focus()
                 && let Some(text) = text_from_keyboard_event(&event)
@@ -252,7 +251,8 @@ fn should_prevent_default_for_key(
         egui::Key::S,     // save
     ];
     for key in keys {
-        if egui_key == key && (modifiers.ctrl || modifiers.command || modifiers.mac_cmd) {
+        if egui_key == key && modifiers.intersects(egui::Modifiers::CONTROL | egui::Modifiers::META)
+        {
             return true;
         }
     }
@@ -855,7 +855,7 @@ fn install_wheel(runner_ref: &WebRunner, target: &EventTarget) -> Result<(), JsV
 
         let modifiers = modifiers_from_wheel_event(&event);
 
-        let egui_event = if modifiers.ctrl && !runner.input.modifiers.ctrl {
+        let egui_event = if modifiers.ctrl() && !runner.input.modifiers.ctrl() {
             // The browser is saying the ctrl key is down, but it isn't _really_.
             // This happens on pinch-to-zoom on multitouch trackpads
             // egui will treat ctrl+scroll as zoom, so it all works.

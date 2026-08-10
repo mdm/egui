@@ -6,9 +6,9 @@ use epaint::text::{Galley, LayoutJob, TextWrapMode, cursor::CCursor};
 use crate::{
     Align, Align2, AsIdSalt, AtomExt as _, AtomKind, AtomLayout, Atoms, Color32, Context,
     CursorIcon, Event, EventFilter, FontSelection, Frame, IMEPurpose, Id, IdSalt, ImeEvent,
-    IntoAtoms, IntoSizedResult, Key, KeyboardShortcut, Margin, Modifiers, NumExt as _, Response,
-    Sense, SizedAtomKind, TextBuffer, TextStyle, Ui, Vec2, Widget, WidgetInfo, WidgetWithState,
-    epaint,
+    IntoAtoms, IntoSizedResult, Key, KeyboardShortcut, Margin, ModifierPattern, Modifiers,
+    ModifiersExt as _, NumExt as _, Response, Sense, SizedAtomKind, TextBuffer, TextStyle, Ui,
+    Vec2, Widget, WidgetInfo, WidgetWithState, epaint,
     os::OperatingSystem,
     output::OutputEvent,
     response,
@@ -150,7 +150,7 @@ impl<'t> TextEdit<'t> {
             align: Align2::LEFT_TOP,
             clip_text: false,
             char_limit: usize::MAX,
-            return_key: Some(KeyboardShortcut::new(Modifiers::NONE, Key::Enter)),
+            return_key: Some(KeyboardShortcut::new(ModifierPattern::NONE, Key::Enter)),
             background_color: None,
         }
     }
@@ -1144,7 +1144,7 @@ fn events(
                 ..
             } if multiline => {
                 let mut ccursor = text.delete_selected(&cursor_range);
-                if modifiers.shift {
+                if modifiers.shift() {
                     // TODO(emilk): support removing indentation over a selection?
                     text.decrease_indentation(&mut ccursor);
                 } else {
@@ -1158,7 +1158,8 @@ fn events(
                 modifiers,
                 ..
             } if return_key.is_some_and(|return_key| {
-                *key == return_key.logical_key && modifiers.matches_logically(return_key.modifiers)
+                *key == return_key.logical_key
+                    && return_key.modifiers.matches_logically(*modifiers, os)
             }) =>
             {
                 if multiline {
@@ -1177,8 +1178,9 @@ fn events(
                 pressed: true,
                 modifiers,
                 ..
-            } if (modifiers.matches_logically(Modifiers::COMMAND) && *key == Key::Y)
-                || (modifiers.matches_logically(Modifiers::SHIFT | Modifiers::COMMAND)
+            } if (ModifierPattern::COMMAND.matches_logically(*modifiers, os) && *key == Key::Y)
+                || ((ModifierPattern::SHIFT | ModifierPattern::COMMAND)
+                    .matches_logically(*modifiers, os)
                     && *key == Key::Z) =>
             {
                 if let Some((redo_ccursor_range, redo_txt)) = state
@@ -1198,7 +1200,7 @@ fn events(
                 pressed: true,
                 modifiers,
                 ..
-            } if modifiers.matches_logically(Modifiers::COMMAND) => {
+            } if ModifierPattern::COMMAND.matches_logically(*modifiers, os) => {
                 if let Some((undo_ccursor_range, undo_txt)) = state
                     .undoer
                     .lock()
@@ -1376,10 +1378,10 @@ fn check_for_mutating_key_press(
 ) -> Option<CCursorRange> {
     match key {
         Key::Backspace => {
-            let ccursor = if modifiers.mac_cmd {
+            let ccursor = if modifiers.mac_cmd(os) {
                 text.delete_paragraph_before_cursor(galley, cursor_range)
             } else if let Some(cursor) = cursor_range.single() {
-                if modifiers.alt || modifiers.ctrl {
+                if modifiers.alt() || modifiers.ctrl() {
                     // alt on mac, ctrl on windows
                     text.delete_previous_word(cursor)
                 } else {
@@ -1391,11 +1393,11 @@ fn check_for_mutating_key_press(
             Some(CCursorRange::one(ccursor))
         }
 
-        Key::Delete if !modifiers.shift || os != OperatingSystem::Windows => {
-            let ccursor = if modifiers.mac_cmd {
+        Key::Delete if !modifiers.shift() || os != OperatingSystem::Windows => {
+            let ccursor = if modifiers.mac_cmd(os) {
                 text.delete_paragraph_after_cursor(galley, cursor_range)
             } else if let Some(cursor) = cursor_range.single() {
-                if modifiers.alt || modifiers.ctrl {
+                if modifiers.alt() || modifiers.ctrl() {
                     // alt on mac, ctrl on windows
                     text.delete_next_word(cursor)
                 } else {
@@ -1411,22 +1413,22 @@ fn check_for_mutating_key_press(
             Some(CCursorRange::one(ccursor))
         }
 
-        Key::H if modifiers.ctrl => {
+        Key::H if modifiers.ctrl() => {
             let ccursor = text.delete_previous_char(cursor_range.primary);
             Some(CCursorRange::one(ccursor))
         }
 
-        Key::K if modifiers.ctrl => {
+        Key::K if modifiers.ctrl() => {
             let ccursor = text.delete_paragraph_after_cursor(galley, cursor_range);
             Some(CCursorRange::one(ccursor))
         }
 
-        Key::U if modifiers.ctrl => {
+        Key::U if modifiers.ctrl() => {
             let ccursor = text.delete_paragraph_before_cursor(galley, cursor_range);
             Some(CCursorRange::one(ccursor))
         }
 
-        Key::W if modifiers.ctrl => {
+        Key::W if modifiers.ctrl() => {
             let ccursor = if let Some(cursor) = cursor_range.single() {
                 text.delete_previous_word(cursor)
             } else {

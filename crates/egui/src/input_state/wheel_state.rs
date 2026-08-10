@@ -1,6 +1,6 @@
 use emath::{Rect, Vec2, vec2};
 
-use crate::{InputOptions, Modifiers, MouseWheelUnit, TouchPhase};
+use crate::{InputOptions, Modifiers, MouseWheelUnit, TouchPhase, os::OperatingSystem};
 
 /// The current state of scrolling.
 ///
@@ -90,6 +90,7 @@ impl WheelState {
         delta: Vec2,
         phase: TouchPhase,
         latest_modifiers: Modifiers,
+        os: OperatingSystem,
     ) {
         self.last_wheel_event = time;
         match phase {
@@ -117,10 +118,12 @@ impl WheelState {
                     MouseWheelUnit::Page => viewport_rect.height() * delta,
                 };
 
-                let is_horizontal = self
-                    .modifiers
-                    .matches_any(options.horizontal_scroll_modifier);
-                let is_vertical = self.modifiers.matches_any(options.vertical_scroll_modifier);
+                let is_horizontal = options
+                    .horizontal_scroll_modifier
+                    .matches_any(self.modifiers, os);
+                let is_vertical = options
+                    .vertical_scroll_modifier
+                    .matches_any(self.modifiers, os);
 
                 if is_horizontal && !is_vertical {
                     // Treat all scrolling as horizontal scrolling.

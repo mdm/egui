@@ -23,7 +23,7 @@ pub use self::{
     ime_event::ImeEvent,
     keyboard_shortcut::KeyboardShortcut,
     modifier_names::ModifierNames,
-    modifiers::Modifiers,
+    modifiers::{ModifierPattern, Modifiers, ModifiersExt},
     mouse_wheel_unit::MouseWheelUnit,
     pointer_button::{NUM_POINTER_BUTTONS, PointerButton},
     raw_input::RawInput,

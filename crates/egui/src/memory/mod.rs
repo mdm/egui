@@ -6,8 +6,8 @@ use ahash::{HashMap, HashSet};
 use epaint::emath::TSTransform;
 
 use crate::{
-    EventFilter, Id, IdMap, LayerId, Order, Pos2, Rangef, RawInput, Rect, Style, Vec2, ViewportId,
-    ViewportIdMap, ViewportIdSet, area, vec2,
+    EventFilter, Id, IdMap, LayerId, ModifiersExt as _, Order, Pos2, Rangef, RawInput, Rect, Style,
+    Vec2, ViewportId, ViewportIdMap, ViewportIdSet, area, vec2,
 };
 
 mod theme;
@@ -334,7 +334,7 @@ impl Default for Options {
             zoom_factor: 1.0,
             zoom_with_keyboard: true,
             quit_shortcuts: vec![crate::KeyboardShortcut::new(
-                crate::Modifiers::COMMAND,
+                crate::ModifierPattern::COMMAND,
                 crate::Key::Q,
             )],
             tessellation_options: Default::default(),

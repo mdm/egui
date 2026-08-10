@@ -2928,7 +2928,7 @@ fn register_rect(ui: &Ui, rect: Rect) {
     }
 
     let show_callstacks = debug.debug_on_hover
-        || debug.debug_on_hover_with_all_modifiers && ui.input(|i| i.modifiers.all());
+        || debug.debug_on_hover_with_all_modifiers && ui.input(|i| i.modifiers.all(i.os));
 
     if !show_callstacks {
         return;

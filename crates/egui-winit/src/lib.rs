@@ -17,7 +17,10 @@ pub use accesskit_winit;
 pub use egui;
 #[cfg(feature = "accesskit")]
 use egui::accesskit;
-use egui::{Pos2, Rect, Theme, Vec2, ViewportBuilder, ViewportCommand, ViewportId, ViewportInfo};
+use egui::{
+    ModifiersExt as _, Pos2, Rect, Theme, Vec2, ViewportBuilder, ViewportCommand, ViewportId,
+    ViewportInfo,
+};
 pub use winit;
 
 pub mod clipboard;
@@ -437,7 +440,7 @@ impl State {
                 self.egui_input.focused = focused;
                 if !focused {
                     // Avoid sticky modifiers when focus is lost (egui clears its own copy too).
-                    self.modifiers = egui::Modifiers::default();
+                    self.modifiers = egui::Modifiers::empty();
                 }
                 self.egui_input
                     .events
@@ -484,20 +487,15 @@ impl State {
             WindowEvent::ModifiersChanged(state) => {
                 let state = state.state();
 
-                let alt = state.alt_key();
-                let ctrl = state.control_key();
-                let shift = state.shift_key();
-                let super_ = state.super_key();
-
-                self.modifiers.alt = alt;
-                self.modifiers.ctrl = ctrl;
-                self.modifiers.shift = shift;
-                self.modifiers.mac_cmd = cfg!(target_os = "macos") && super_;
-                self.modifiers.command = if cfg!(target_os = "macos") {
-                    super_
-                } else {
-                    ctrl
-                };
+                // Report only what is physically down. Whether ⌘ or Ctrl counts as the
+                // "command" key is resolved at match time from `Context::os()`, so unlike
+                // before we no longer bake the platform in at compile time here.
+                self.modifiers.set(egui::Modifiers::ALT, state.alt_key());
+                self.modifiers
+                    .set(egui::Modifiers::CONTROL, state.control_key());
+                self.modifiers
+                    .set(egui::Modifiers::SHIFT, state.shift_key());
+                self.modifiers.set(egui::Modifiers::META, state.super_key());
 
                 self.egui_input
                     .events
@@ -1058,8 +1056,10 @@ impl State {
                 // We need to ignore these characters that are side-effects of commands.
                 // Also make sure the key is pressed (not released). On Linux, text might
                 // contain some data even when the key is released.
-                let is_cmd =
-                    self.modifiers.ctrl || self.modifiers.command || self.modifiers.mac_cmd;
+                // Any of Ctrl/⌘ means this keypress is a command, not text input.
+                let is_cmd = self
+                    .modifiers
+                    .intersects(egui::Modifiers::CONTROL | egui::Modifiers::META);
                 if pressed && !is_cmd {
                     self.egui_input
                         .events
@@ -1417,22 +1417,28 @@ fn is_printable_char(chr: char) -> bool {
     !is_in_private_use_area && !chr.is_ascii_control()
 }
 
+/// The OS we were built for. `egui-winit` is native-only, so this always matches
+/// what `Context::os()` reports.
+fn target_os() -> egui::os::OperatingSystem {
+    egui::os::OperatingSystem::from_target_os()
+}
+
 fn is_cut_command(modifiers: egui::Modifiers, keycode: egui::Key) -> bool {
     keycode == egui::Key::Cut
-        || (modifiers.command && keycode == egui::Key::X)
-        || (cfg!(target_os = "windows") && modifiers.shift && keycode == egui::Key::Delete)
+        || (modifiers.command(target_os()) && keycode == egui::Key::X)
+        || (cfg!(target_os = "windows") && modifiers.shift() && keycode == egui::Key::Delete)
 }
 
 fn is_copy_command(modifiers: egui::Modifiers, keycode: egui::Key) -> bool {
     keycode == egui::Key::Copy
-        || (modifiers.command && keycode == egui::Key::C)
-        || (cfg!(target_os = "windows") && modifiers.ctrl && keycode == egui::Key::Insert)
+        || (modifiers.command(target_os()) && keycode == egui::Key::C)
+        || (cfg!(target_os = "windows") && modifiers.ctrl() && keycode == egui::Key::Insert)
 }
 
 fn is_paste_command(modifiers: egui::Modifiers, keycode: egui::Key) -> bool {
     keycode == egui::Key::Paste
-        || (modifiers.command && keycode == egui::Key::V)
-        || (cfg!(target_os = "windows") && modifiers.shift && keycode == egui::Key::Insert)
+        || (modifiers.command(target_os()) && keycode == egui::Key::V)
+        || (cfg!(target_os = "windows") && modifiers.shift() && keycode == egui::Key::Insert)
 }
 
 fn translate_mouse_button(button: winit::event::MouseButton) -> Option<egui::PointerButton> {

@@ -1,7 +1,7 @@
 use crate::{
     Atom, AtomExt as _, AtomKind, Atoms, Button, CursorIcon, Id, IntoAtoms, Key, MINUS_CHAR_STR,
-    Modifiers, NumExt as _, Response, RichText, Sense, TextEdit, TextWrapMode, Ui, Widget,
-    WidgetInfo, emath, text,
+    ModifierPattern, ModifiersExt as _, NumExt as _, Response, RichText, Sense, TextEdit,
+    TextWrapMode, Ui, Widget, WidgetInfo, emath, text,
 };
 use core::{cmp::Ordering, ops::RangeInclusive};
 use emath::Vec2;
@@ -493,8 +493,8 @@ impl Widget for DragValue<'_> {
                 // assume this behavior, so having a separate mode for incrementing
                 // and decrementing, that supports all arrow keys, would be
                 // problematic.
-                change += input.count_and_consume_key(Modifiers::NONE, Key::ArrowUp) as f64
-                    - input.count_and_consume_key(Modifiers::NONE, Key::ArrowDown) as f64;
+                change += input.count_and_consume_key(ModifierPattern::NONE, Key::ArrowUp) as f64
+                    - input.count_and_consume_key(ModifierPattern::NONE, Key::ArrowDown) as f64;
             }
 
             use accesskit::Action;

@@ -1,6 +1,6 @@
 use epaint::{Galley, text::CharIndex, text::cursor::CCursor};
 
-use crate::{Event, Id, Key, Modifiers, os::OperatingSystem};
+use crate::{Event, Id, Key, Modifiers, ModifiersExt as _, os::OperatingSystem};
 
 use super::text_cursor_state::{ccursor_next_word, ccursor_previous_word, slice_char_range};
 
@@ -113,12 +113,12 @@ impl CCursorRange {
         key: Key,
     ) -> bool {
         match key {
-            Key::A if modifiers.command => {
+            Key::A if modifiers.command(os) => {
                 *self = Self::select_all(galley);
                 true
             }
 
-            Key::ArrowLeft | Key::ArrowRight if modifiers.is_none() && !self.is_empty() => {
+            Key::ArrowLeft | Key::ArrowRight if !modifiers.any() && !self.is_empty() => {
                 if key == Key::ArrowLeft {
                     *self = Self::one(self.sorted_cursors()[0]);
                 } else {
@@ -141,14 +141,14 @@ impl CCursorRange {
                     key,
                     modifiers,
                 );
-                if !modifiers.shift {
+                if !modifiers.shift() {
                     self.secondary = self.primary;
                 }
                 true
             }
 
             Key::P | Key::N | Key::B | Key::F | Key::A | Key::E
-                if os == OperatingSystem::Mac && modifiers.ctrl && !modifiers.shift =>
+                if os == OperatingSystem::Mac && modifiers.ctrl() && !modifiers.shift() =>
             {
                 move_single_cursor(
                     os,
@@ -262,7 +262,7 @@ fn move_single_cursor(
     modifiers: &Modifiers,
 ) {
     let (new_cursor, new_h_pos) =
-        if os == OperatingSystem::Mac && modifiers.ctrl && !modifiers.shift {
+        if os == OperatingSystem::Mac && modifiers.ctrl() && !modifiers.shift() {
             match key {
                 Key::A => (galley.cursor_begin_of_row(cursor), None),
                 Key::E => (galley.cursor_end_of_row(cursor), None),
@@ -275,27 +275,27 @@ fn move_single_cursor(
         } else {
             match key {
                 Key::ArrowLeft => {
-                    if modifiers.alt || modifiers.ctrl {
+                    if modifiers.alt() || modifiers.ctrl() {
                         // alt on mac, ctrl on windows
                         (ccursor_previous_word(galley, *cursor), None)
-                    } else if modifiers.mac_cmd {
+                    } else if modifiers.mac_cmd(os) {
                         (galley.cursor_begin_of_row(cursor), None)
                     } else {
                         (galley.cursor_left_one_character(cursor), None)
                     }
                 }
                 Key::ArrowRight => {
-                    if modifiers.alt || modifiers.ctrl {
+                    if modifiers.alt() || modifiers.ctrl() {
                         // alt on mac, ctrl on windows
                         (ccursor_next_word(galley, *cursor), None)
-                    } else if modifiers.mac_cmd {
+                    } else if modifiers.mac_cmd(os) {
                         (galley.cursor_end_of_row(cursor), None)
                     } else {
                         (galley.cursor_right_one_character(cursor), None)
                     }
                 }
                 Key::ArrowUp => {
-                    if modifiers.command {
+                    if modifiers.command(os) {
                         // mac and windows behavior
                         (galley.begin(), None)
                     } else {
@@ -303,7 +303,7 @@ fn move_single_cursor(
                     }
                 }
                 Key::ArrowDown => {
-                    if modifiers.command {
+                    if modifiers.command(os) {
                         // mac and windows behavior
                         (galley.end(), None)
                     } else {
@@ -312,7 +312,7 @@ fn move_single_cursor(
                 }
 
                 Key::Home => {
-                    if modifiers.ctrl {
+                    if modifiers.ctrl() {
                         // windows behavior
                         (galley.begin(), None)
                     } else {
@@ -320,7 +320,7 @@ fn move_single_cursor(
                     }
                 }
                 Key::End => {
-                    if modifiers.ctrl {
+                    if modifiers.ctrl() {
                         // windows behavior
                         (galley.end(), None)
                     } else {

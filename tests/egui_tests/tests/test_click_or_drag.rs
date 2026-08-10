@@ -173,7 +173,7 @@ fn click_inside_a_widget_still_clicks() {
         pos: grab,
         button: egui::PointerButton::Primary,
         pressed: false,
-        modifiers: egui::Modifiers::NONE,
+        modifiers: egui::Modifiers::empty(),
     });
     harness.step();
 
@@ -220,7 +220,7 @@ fn press_on_a_button_inside_a_draggable_row_stays_undecided() {
         pos: grab,
         button: egui::PointerButton::Primary,
         pressed: false,
-        modifiers: egui::Modifiers::NONE,
+        modifiers: egui::Modifiers::empty(),
     });
     harness.step();
 

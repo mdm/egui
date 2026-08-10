@@ -1,7 +1,9 @@
 #![cfg(feature = "snapshot")]
 #![cfg(feature = "wgpu")]
 
-use egui::{Modifiers, ScrollArea, Vec2, include_image};
+use egui::ModifiersExt as _;
+
+use egui::{ModifierPattern, ScrollArea, Vec2, include_image};
 use egui_kittest::{Harness, SnapshotResults};
 use kittest::Queryable as _;
 
@@ -51,13 +53,13 @@ fn test_modifiers() {
     }
     let mut harness = Harness::new_ui_state(
         |ui, state| {
-            if ui.button("Click me").clicked() && ui.input(|i| i.modifiers.command) {
+            if ui.button("Click me").clicked() && ui.input(|i| i.modifiers.command(i.os)) {
                 state.cmd_clicked = true;
             }
-            if ui.input(|i| i.modifiers.command && i.key_pressed(egui::Key::Z)) {
+            if ui.input(|i| i.modifiers.command(i.os) && i.key_pressed(egui::Key::Z)) {
                 state.cmd_z_pressed = true;
             }
-            if ui.input(|i| i.modifiers.command && i.key_pressed(egui::Key::Y)) {
+            if ui.input(|i| i.modifiers.command(i.os) && i.key_pressed(egui::Key::Y)) {
                 state.cmd_y_pressed = true;
             }
         },
@@ -66,13 +68,13 @@ fn test_modifiers() {
 
     harness
         .get_by_label("Click me")
-        .click_modifiers(Modifiers::COMMAND);
+        .click_modifiers(ModifierPattern::COMMAND);
     harness.run();
 
-    harness.key_press_modifiers(Modifiers::COMMAND, egui::Key::Z);
+    harness.key_press_modifiers(ModifierPattern::COMMAND, egui::Key::Z);
     harness.run();
 
-    harness.key_combination_modifiers(Modifiers::COMMAND, &[egui::Key::Y]);
+    harness.key_combination_modifiers(ModifierPattern::COMMAND, &[egui::Key::Y]);
     harness.run();
 
     let state = harness.state();
