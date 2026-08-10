@@ -1,7 +1,7 @@
 use epaint::ColorImage;
 
 use crate::{
-    Key,
+    Code, Key,
     emath::{Pos2, Vec2},
 };
 
@@ -45,13 +45,19 @@ pub enum Event {
 
         /// The physical key, corresponding to the actual position on the keyboard.
         ///
-        /// This ignores keymaps, so it is not recommended to use this.
-        /// The only thing it makes sense for is things like games,
-        /// where e.g. the physical location of WSAD on QWERTY should always map to movement,
-        /// even if the user is using Dvorak or AZERTY.
+        /// This ignores keymaps, so for anything the user thinks of by name
+        /// (keyboard shortcuts, text editing) you want the `key` field instead.
         ///
-        /// `eframe` does not (yet) implement this on web.
-        physical_key: Option<Key>,
+        /// Use this when the position matters more than the label:
+        /// * games, where e.g. the physical location of WASD on QWERTY should always map
+        ///   to movement, even if the user is using Dvorak or AZERTY;
+        /// * telling apart keys that share a logical [`Key`], such as
+        ///   [`Code::NumpadEnter`] vs [`Code::Enter`], or [`Code::Numpad5`] vs
+        ///   [`Code::Digit5`].
+        ///
+        /// Use [`Key::from_code`] to get back the logical key this would produce
+        /// on a US layout.
+        physical_key: Option<Code>,
 
         /// Was it pressed or released?
         pressed: bool,

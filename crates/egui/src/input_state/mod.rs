@@ -16,7 +16,7 @@ use crate::{
 use core::time::Duration;
 use std::collections::{BTreeMap, HashSet};
 
-pub use crate::Key;
+pub use crate::{Code, Key};
 pub use touch_state::MultiTouchInfo;
 use touch_state::TouchState;
 
@@ -320,7 +320,19 @@ pub struct InputState {
     /// The keys that are currently being held down.
     ///
     /// Keys released this frame are NOT considered down.
+    ///
+    /// These are *logical* keys, so the numpad Enter shows up here as
+    /// [`Key::Enter`]. See [`Self::codes_down`] for the physical keys.
     pub keys_down: HashSet<Key>,
+
+    /// The physical keys that are currently being held down.
+    ///
+    /// Keys released this frame are NOT considered down.
+    ///
+    /// Unlike [`Self::keys_down`] this ignores the keymap, and keeps physically
+    /// distinct keys apart ([`Code::NumpadEnter`] vs [`Code::Enter`]).
+    /// Useful for games, where the position of a key matters more than its label.
+    pub codes_down: HashSet<Code>,
 
     /// In-order events received this frame
     pub events: Vec<Event>,
@@ -354,6 +366,7 @@ impl Default for InputState {
             focused: false,
             modifiers: Default::default(),
             keys_down: Default::default(),
+            codes_down: Default::default(),
             events: Default::default(),
             options: Default::default(),
         }
@@ -391,6 +404,7 @@ impl InputState {
         let pointer = self.pointer.begin_pass(time, &new, options);
 
         let mut keys_down = self.keys_down;
+        let mut codes_down = self.codes_down;
         let mut modifiers = self.modifiers;
         let mut zoom_factor_delta = 1.0; // TODO(emilk): smoothing for zoom factor
         let mut rotation_radians = 0.0;
@@ -401,15 +415,24 @@ impl InputState {
             match event {
                 Event::Key {
                     key,
+                    physical_key,
                     pressed,
                     repeat,
                     ..
                 } => {
                     if *pressed {
+                        // NOTE: `repeat` is derived from the logical key only, so that
+                        // it keeps working for integrations that don't report a physical key.
                         let first_press = keys_down.insert(*key);
                         *repeat = !first_press;
+                        if let Some(physical_key) = *physical_key {
+                            codes_down.insert(physical_key);
+                        }
                     } else {
                         keys_down.remove(key);
+                        if let Some(physical_key) = physical_key {
+                            codes_down.remove(physical_key);
+                        }
                     }
                 }
                 Event::MouseWheel {
@@ -444,6 +467,7 @@ impl InputState {
                     // So we take the safe route and just clear all the keys and modifiers when
                     // the app loses focus.
                     keys_down.clear();
+                    codes_down.clear();
                     modifiers = Modifiers::default();
                 }
                 _ => {}
@@ -487,6 +511,7 @@ impl InputState {
             focused: new.focused,
             modifiers,
             keys_down,
+            codes_down,
             events: new.events.clone(), // TODO(emilk): remove clone() and use raw.events
             raw: new,
             options,
@@ -780,6 +805,56 @@ impl InputState {
                     pressed: false,
                     ..
                 } if *key == desired_key
+            )
+        })
+    }
+
+    /// Was the given physical key pressed this frame?
+    ///
+    /// Includes key-repeat events.
+    ///
+    /// Unlike [`Self::key_pressed`] this ignores the keymap and distinguishes
+    /// physically distinct keys, e.g. [`Code::NumpadEnter`] from [`Code::Enter`].
+    ///
+    /// Note that this is only reported by integrations that fill in the
+    /// `physical_key` field of [`Event::Key`].
+    pub fn code_pressed(&self, desired_code: Code) -> bool {
+        self.num_code_presses(desired_code) > 0
+    }
+
+    /// How many times was the given physical key pressed this frame?
+    ///
+    /// Includes key-repeat events.
+    pub fn num_code_presses(&self, desired_code: Code) -> usize {
+        self.events
+            .iter()
+            .filter(|event| {
+                matches!(
+                    event,
+                    Event::Key { physical_key: Some(code), pressed: true, .. }
+                    if *code == desired_code
+                )
+            })
+            .count()
+    }
+
+    /// Is the given physical key currently held down?
+    ///
+    /// Keys released this frame are NOT considered down.
+    pub fn code_down(&self, desired_code: Code) -> bool {
+        self.codes_down.contains(&desired_code)
+    }
+
+    /// Was the given physical key released this frame?
+    pub fn code_released(&self, desired_code: Code) -> bool {
+        self.events.iter().any(|event| {
+            matches!(
+                event,
+                Event::Key {
+                    physical_key: Some(code),
+                    pressed: false,
+                    ..
+                } if *code == desired_code
             )
         })
     }
@@ -1593,6 +1668,7 @@ impl InputState {
             focused,
             modifiers,
             keys_down,
+            codes_down,
             events,
             options: _,
         } = self;
@@ -1642,7 +1718,8 @@ impl InputState {
         ui.label(format!("stable_dt:    {:.1} ms", 1e3 * stable_dt));
         ui.label(format!("focused:   {focused}"));
         ui.label(format!("modifiers: {modifiers:#?}"));
-        ui.label(format!("keys_down: {keys_down:?}"));
+        ui.label(format!("keys_down:  {keys_down:?}"));
+        ui.label(format!("codes_down: {codes_down:?}"));
         ui.scope(|ui| {
             ui.set_min_height(150.0);
             ui.label(format!("events: {events:#?}"))

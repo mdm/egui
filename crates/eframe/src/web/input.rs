@@ -146,8 +146,21 @@ pub fn text_from_keyboard_event(event: &web_sys::KeyboardEvent) -> Option<String
 
 /// Web sends all keys as strings, so it is up to us to figure out if it is
 /// a real text input or the name of a key.
+///
+/// This takes a [`web_sys::KeyboardEvent::key`], i.e. the *logical* key.
 pub fn translate_key(key: &str) -> Option<egui::Key> {
     egui::Key::from_name(key)
+}
+
+/// Translate a [`web_sys::KeyboardEvent::code`] into the *physical* [`egui::Code`].
+///
+/// The browser emits exactly the [W3C UI Events `code`][spec] strings that
+/// `Code` parses, so this is a lossless round-trip — including the numpad,
+/// which the logical [`translate_key`] deliberately folds into the main row.
+///
+/// [spec]: https://www.w3.org/TR/uievents-code/
+pub fn translate_code(code: &str) -> Option<egui::Code> {
+    code.parse().ok()
 }
 
 pub fn modifiers_from_kb_event(event: &web_sys::KeyboardEvent) -> egui::Modifiers {
