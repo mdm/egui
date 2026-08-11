@@ -1795,7 +1795,7 @@ fn key_from_named_key(named_key: winit::keyboard::NamedKey) -> Option<egui::Key>
         ZoomToggle,
     );
 
-    // Not mapped: `Hyper` and `Super`, which the W3C spec deprecates in favour of
+    // Not mapped: `Hyper` and `Super`, which the W3C spec deprecates in favor of
     // `Meta`, matching how `code_from_key_code` drops their physical counterparts.
     log::trace!("Unknown key: {named_key:?}");
     None
