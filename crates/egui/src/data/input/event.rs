@@ -26,7 +26,7 @@ pub enum Event {
 
     /// Text input, e.g. via keyboard.
     ///
-    /// When the user presses enter/return, do not send a [`Text`](Event::Text) (just [`Key::Enter`]).
+    /// When the user presses enter/return, do not send a [`Text`](Event::Text) (just [`crate::NamedKey::Enter`]).
     Text(String),
 
     /// A key was pressed or released.
@@ -55,7 +55,7 @@ pub enum Event {
         ///   [`Code::NumpadEnter`] vs [`Code::Enter`], or [`Code::Numpad5`] vs
         ///   [`Code::Digit5`].
         ///
-        /// Use [`Key::from_code`] to get back the logical key this would produce
+        /// Use [`crate::KeyExt::from_code`] to get back the logical key this would produce
         /// on a US layout.
         physical_key: Option<Code>,
 

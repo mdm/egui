@@ -1,7 +1,7 @@
 use crate::{
     Atom, AtomExt as _, AtomKind, Atoms, Button, CursorIcon, Id, IntoAtoms, Key, MINUS_CHAR_STR,
-    Modifiers, NumExt as _, Response, RichText, Sense, TextEdit, TextWrapMode, Ui, Widget,
-    WidgetInfo, emath, text,
+    ModifierPattern, ModifiersExt as _, NamedKey, NumExt as _, Response, RichText, Sense, TextEdit,
+    TextWrapMode, Ui, Widget, WidgetInfo, emath, text,
 };
 use core::{cmp::Ordering, ops::RangeInclusive};
 use emath::Vec2;
@@ -493,8 +493,13 @@ impl Widget for DragValue<'_> {
                 // assume this behavior, so having a separate mode for incrementing
                 // and decrementing, that supports all arrow keys, would be
                 // problematic.
-                change += input.count_and_consume_key(Modifiers::NONE, Key::ArrowUp) as f64
-                    - input.count_and_consume_key(Modifiers::NONE, Key::ArrowDown) as f64;
+                change += input
+                    .count_and_consume_key(ModifierPattern::NONE, &Key::Named(NamedKey::ArrowUp))
+                    as f64
+                    - input.count_and_consume_key(
+                        ModifierPattern::NONE,
+                        &Key::Named(NamedKey::ArrowDown),
+                    ) as f64;
             }
 
             use accesskit::Action;
@@ -537,7 +542,9 @@ impl Widget for DragValue<'_> {
 
         let text_style = ui.style().drag_value_text_style.clone();
 
-        if ui.memory(|mem| mem.lost_focus(id)) && !ui.input(|i| i.key_pressed(Key::Escape)) {
+        if ui.memory(|mem| mem.lost_focus(id))
+            && !ui.input(|i| i.key_pressed(&Key::Named(NamedKey::Escape)))
+        {
             let value_text = ui.data_mut(|data| data.remove_temp::<String>(id));
             if let Some(value_text) = value_text {
                 // We were editing the value as text last frame, but lost focus.
@@ -579,7 +586,7 @@ impl Widget for DragValue<'_> {
                 response.changed()
             } else {
                 // Update only when the edit has lost focus.
-                response.lost_focus() && !ui.input(|i| i.key_pressed(Key::Escape))
+                response.lost_focus() && !ui.input(|i| i.key_pressed(&Key::Named(NamedKey::Escape)))
             };
             if update {
                 let parsed_value = parse(custom_parser.as_ref(), &value_text);

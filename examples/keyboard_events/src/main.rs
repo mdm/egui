@@ -2,7 +2,7 @@
 #![expect(rustdoc::missing_crate_level_docs)] // it's an example
 
 use eframe::egui;
-use egui::{Key, ScrollArea};
+use egui::{Key, KeyExt as _, ScrollArea};
 
 fn main() -> eframe::Result {
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
@@ -33,14 +33,14 @@ impl eframe::App for Content {
                     ui.label(&self.text);
                 });
 
-            if ui.input(|i| i.key_pressed(Key::A)) {
+            if ui.input(|i| i.key_pressed(&Key::character('a'))) {
                 self.text.push_str("\nPressed");
             }
-            if ui.input(|i| i.key_down(Key::A)) {
+            if ui.input(|i| i.key_down(&Key::character('a'))) {
                 self.text.push_str("\nHeld");
                 ui.request_repaint(); // make sure we note the holding.
             }
-            if ui.input(|i| i.key_released(Key::A)) {
+            if ui.input(|i| i.key_released(&Key::character('a'))) {
                 self.text.push_str("\nReleased");
             }
         });

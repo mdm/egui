@@ -1,7 +1,7 @@
 use core::fmt::{Debug, Formatter};
 use egui::accesskit::ActionRequest;
 use egui::mutex::Mutex;
-use egui::{Modifiers, PointerButton, Pos2, accesskit};
+use egui::{ModifierPattern, Modifiers, PointerButton, Pos2, accesskit, os::OperatingSystem};
 use kittest::{AccessKitNode, NodeT, debug_fmt_node};
 
 pub type EventQueue = Mutex<Vec<egui::Event>>;
@@ -11,6 +11,9 @@ pub struct Node<'tree> {
     pub(crate) accesskit_node: AccessKitNode<'tree>,
     pub(crate) queue: &'tree EventQueue,
     pub(crate) pixels_per_point: f32,
+
+    /// Needed to resolve [`ModifierPattern::COMMAND`] into ⌘ or Ctrl.
+    pub(crate) os: OperatingSystem,
 }
 
 impl Debug for Node<'_> {
@@ -25,7 +28,7 @@ impl<'tree> NodeT<'tree> for Node<'tree> {
     }
 
     fn new_related(&self, child_node: AccessKitNode<'tree>) -> Self {
-        Self::new(child_node, self.queue, self.pixels_per_point)
+        Self::new(child_node, self.queue, self.pixels_per_point, self.os)
     }
 }
 
@@ -35,11 +38,13 @@ impl<'tree> Node<'tree> {
         accesskit_node: AccessKitNode<'tree>,
         queue: &'tree EventQueue,
         pixels_per_point: f32,
+        os: OperatingSystem,
     ) -> Self {
         Self {
             accesskit_node,
             queue,
             pixels_per_point,
+            os,
         }
     }
 
@@ -47,10 +52,10 @@ impl<'tree> Node<'tree> {
         self.queue.lock().push(event);
     }
 
-    fn modifiers(&self, modifiers: Modifiers) {
-        self.queue
-            .lock()
-            .push(egui::Event::ModifiersChanged(modifiers));
+    fn modifiers(&self, modifiers: ModifierPattern) {
+        self.queue.lock().push(egui::Event::ModifiersChanged(
+            modifiers.to_modifiers(self.os),
+        ));
     }
 
     pub fn hover(&self) {
@@ -73,27 +78,28 @@ impl<'tree> Node<'tree> {
                 pos: self.rect().center(),
                 button,
                 pressed,
-                modifiers: Modifiers::default(),
+                modifiers: Modifiers::empty(),
             });
         }
     }
 
-    pub fn click_modifiers(&self, modifiers: Modifiers) {
+    pub fn click_modifiers(&self, modifiers: ModifierPattern) {
         self.click_button_modifiers(PointerButton::Primary, modifiers);
     }
 
-    pub fn click_button_modifiers(&self, button: PointerButton, modifiers: Modifiers) {
+    pub fn click_button_modifiers(&self, button: PointerButton, modifiers: ModifierPattern) {
         self.hover();
         self.modifiers(modifiers);
+        let held = modifiers.to_modifiers(self.os);
         for pressed in [true, false] {
             self.event(egui::Event::PointerButton {
                 pos: self.rect().center(),
                 button,
                 pressed,
-                modifiers,
+                modifiers: held,
             });
         }
-        self.modifiers(Modifiers::default());
+        self.modifiers(ModifierPattern::NONE);
     }
 
     /// Click the node via accesskit.

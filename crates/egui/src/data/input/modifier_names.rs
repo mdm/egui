@@ -1,4 +1,4 @@
-use super::Modifiers;
+use super::ModifierPattern;
 
 /// Names of different modifier keys.
 ///
@@ -42,7 +42,7 @@ impl ModifierNames<'static> {
 }
 
 impl ModifierNames<'_> {
-    pub fn format(&self, modifiers: &Modifiers, is_mac: bool) -> String {
+    pub fn format(&self, modifiers: &ModifierPattern, is_mac: bool) -> String {
         let mut s = String::new();
 
         let mut append_if = |modifier_is_active, modifier_name| {

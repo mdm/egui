@@ -464,7 +464,7 @@ pub use self::{
     containers::{menu::MenuBar, *},
     context::{Context, RepaintCause, RequestRepaintInfo},
     data::{
-        Code, Key, UserData,
+        Code, Key, KeyExt, NamedKey, UserData,
         input::*,
         output::{
             self, CursorIcon, CustomCursorImage, FullOutput, LogicOutput, OpenUrl, OutputCommand,

@@ -1,21 +1,25 @@
-use crate::Key;
+use crate::{Key, KeyExt as _};
 
-use super::{ModifierNames, Modifiers};
+use super::{ModifierNames, ModifierPattern};
 
 /// A keyboard shortcut, e.g. `Ctrl+Alt+W`.
 ///
 /// Can be used with [`crate::InputState::consume_shortcut`]
 /// and [`crate::Context::format_shortcut`].
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+///
+/// NOTE: this is not `Copy` and cannot be built in a `const`, because
+/// [`Key::Character`] owns a `String`. Declare shared shortcuts with
+/// [`std::sync::LazyLock`] instead of `const`.
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct KeyboardShortcut {
-    pub modifiers: Modifiers,
+    pub modifiers: ModifierPattern,
 
     pub logical_key: Key,
 }
 
 impl KeyboardShortcut {
-    pub const fn new(modifiers: Modifiers, logical_key: Key) -> Self {
+    pub fn new(modifiers: ModifierPattern, logical_key: Key) -> Self {
         Self {
             modifiers,
             logical_key,
@@ -28,9 +32,9 @@ impl KeyboardShortcut {
             s += names.concat;
         }
         if names.is_short {
-            s += self.logical_key.symbol_or_name();
+            s += &self.logical_key.symbol_or_name();
         } else {
-            s += self.logical_key.name();
+            s += &self.logical_key.name();
         }
         s
     }
@@ -38,7 +42,10 @@ impl KeyboardShortcut {
 
 #[test]
 fn format_kb_shortcut() {
-    let cmd_shift_f = KeyboardShortcut::new(Modifiers::COMMAND | Modifiers::SHIFT, Key::F);
+    let cmd_shift_f = KeyboardShortcut::new(
+        ModifierPattern::COMMAND | ModifierPattern::SHIFT,
+        Key::character('f'),
+    );
     assert_eq!(
         cmd_shift_f.format(&ModifierNames::NAMES, false),
         "Ctrl+Shift+F"

@@ -1,6 +1,6 @@
 use egui::accesskit::{self, Role};
 use egui::{
-    Align2, Button, ComboBox, FontId, Image, Label, Modifiers, Popup, Pos2, Rect, Stroke,
+    Align2, Button, ComboBox, FontId, Image, Label, Modifiers, NamedKey, Popup, Pos2, Rect, Stroke,
     StrokeKind, Vec2, Widget as _, Window,
 };
 #[cfg(all(feature = "wgpu", feature = "snapshot"))]
@@ -15,19 +15,19 @@ pub fn focus_should_skip_over_disabled_buttons() {
         ui.add(Button::new("Button 3"));
     });
 
-    harness.key_press(egui::Key::Tab);
+    harness.key_press(egui::Key::Named(NamedKey::Tab));
     harness.run();
 
     let button_1 = harness.get_by_label("Button 1");
     assert!(button_1.is_focused());
 
-    harness.key_press(egui::Key::Tab);
+    harness.key_press(egui::Key::Named(NamedKey::Tab));
     harness.run();
 
     let button_3 = harness.get_by_label("Button 3");
     assert!(button_3.is_focused());
 
-    harness.key_press(egui::Key::Tab);
+    harness.key_press(egui::Key::Named(NamedKey::Tab));
     harness.run();
 
     let button_1 = harness.get_by_label("Button 1");
@@ -46,13 +46,13 @@ pub fn focus_should_skip_over_disabled_drag_values() {
         ui.add(egui::DragValue::new(&mut value_3));
     });
 
-    harness.key_press(egui::Key::Tab);
+    harness.key_press(egui::Key::Named(NamedKey::Tab));
     harness.run();
 
     let drag_value_1 = harness.get_by(|node| node.numeric_value() == Some(1.0));
     assert!(drag_value_1.is_focused());
 
-    harness.key_press(egui::Key::Tab);
+    harness.key_press(egui::Key::Named(NamedKey::Tab));
     harness.run();
 
     let drag_value_3 = harness.get_by(|node| node.numeric_value() == Some(3.0));
@@ -130,31 +130,31 @@ pub fn slider_should_move_with_fixed_decimals() {
         ui.add(egui::Slider::new(&mut value, 0.1..=10.0).fixed_decimals(2));
     });
 
-    harness.key_press(egui::Key::Tab);
+    harness.key_press(egui::Key::Named(NamedKey::Tab));
     harness.run();
 
     let actual_slider = harness.get_by_role(accesskit::Role::SpinButton);
     assert_eq!(actual_slider.value(), Some("1.00".to_owned()));
 
-    harness.key_press(egui::Key::ArrowRight);
+    harness.key_press(egui::Key::Named(NamedKey::ArrowRight));
     harness.run();
 
     let actual_slider = harness.get_by_role(accesskit::Role::SpinButton);
     assert_eq!(actual_slider.value(), Some("1.01".to_owned()));
 
-    harness.key_press(egui::Key::ArrowRight);
+    harness.key_press(egui::Key::Named(NamedKey::ArrowRight));
     harness.run();
 
     let actual_slider = harness.get_by_role(accesskit::Role::SpinButton);
     assert_eq!(actual_slider.value(), Some("1.02".to_owned()));
 
-    harness.key_press(egui::Key::ArrowLeft);
+    harness.key_press(egui::Key::Named(NamedKey::ArrowLeft));
     harness.run();
 
     let actual_slider = harness.get_by_role(accesskit::Role::SpinButton);
     assert_eq!(actual_slider.value(), Some("1.01".to_owned()));
 
-    harness.key_press(egui::Key::ArrowLeft);
+    harness.key_press(egui::Key::Named(NamedKey::ArrowLeft));
     harness.run();
 
     let actual_slider = harness.get_by_role(accesskit::Role::SpinButton);
@@ -292,13 +292,13 @@ pub fn keyboard_should_open_nested_submenu() {
     harness.get_by_label("X").focus();
     harness.run();
 
-    harness.key_press(egui::Key::Enter);
+    harness.key_press(egui::Key::Named(NamedKey::Enter));
     harness.run();
 
     harness.get_by_label_contains("Y").focus();
     harness.run();
 
-    harness.key_press(egui::Key::Enter);
+    harness.key_press(egui::Key::Named(NamedKey::Enter));
     harness.run();
 
     assert!(
@@ -314,13 +314,13 @@ pub fn keyboard_should_close_nested_submenu_with_second_enter() {
     harness.get_by_label("X").focus();
     harness.run();
 
-    harness.key_press(egui::Key::Enter);
+    harness.key_press(egui::Key::Named(NamedKey::Enter));
     harness.run();
 
     harness.get_by_label_contains("Y").focus();
     harness.run();
 
-    harness.key_press(egui::Key::Enter);
+    harness.key_press(egui::Key::Named(NamedKey::Enter));
     harness.run();
 
     assert!(
@@ -331,7 +331,7 @@ pub fn keyboard_should_close_nested_submenu_with_second_enter() {
     harness.get_by_label_contains("Y").focus();
     harness.run();
 
-    harness.key_press(egui::Key::Enter);
+    harness.key_press(egui::Key::Named(NamedKey::Enter));
     harness.run();
 
     assert!(

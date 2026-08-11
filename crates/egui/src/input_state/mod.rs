@@ -2,14 +2,15 @@ mod touch_state;
 mod wheel_state;
 
 use crate::{
-    SafeAreaInsets,
+    KeyExt as _, SafeAreaInsets,
     emath::{NumExt as _, Pos2, Rect, Vec2, vec2},
+    os::OperatingSystem,
     util::History,
 };
 use crate::{
     data::input::{
-        Event, EventFilter, KeyboardShortcut, Modifiers, NUM_POINTER_BUTTONS, PointerButton,
-        RawInput, TouchDeviceId, ViewportInfo,
+        Event, EventFilter, KeyboardShortcut, ModifierPattern, Modifiers, NUM_POINTER_BUTTONS,
+        PointerButton, RawInput, TouchDeviceId, ViewportInfo,
     },
     input_state::wheel_state::WheelState,
 };
@@ -79,19 +80,19 @@ pub struct InputOptions {
     /// When this modifier is down, all scroll events are treated as zoom events.
     ///
     /// The default is CTRL/CMD, and it is STRONGLY recommended to NOT change this.
-    pub zoom_modifier: Modifiers,
+    pub zoom_modifier: ModifierPattern,
 
     /// When this modifier is down, all scroll events are treated as horizontal scrolls,
     /// and when combined with [`Self::zoom_modifier`] it will result in zooming
     /// on only the horizontal axis.
     ///
     /// The default is SHIFT, and it is STRONGLY recommended to NOT change this.
-    pub horizontal_scroll_modifier: Modifiers,
+    pub horizontal_scroll_modifier: ModifierPattern,
 
     /// When this modifier is down, all scroll events are treated as vertical scrolls,
     /// and when combined with [`Self::zoom_modifier`] it will result in zooming
     /// on only the vertical axis.
-    pub vertical_scroll_modifier: Modifiers,
+    pub vertical_scroll_modifier: ModifierPattern,
 
     /// When should we surrender focus from the focused widget?
     pub surrender_focus_on: SurrenderFocusOn,
@@ -113,9 +114,9 @@ impl Default for InputOptions {
             max_click_dist: 6.0,
             max_click_duration: 0.8,
             max_double_click_delay: 0.3,
-            zoom_modifier: Modifiers::COMMAND,
-            horizontal_scroll_modifier: Modifiers::SHIFT,
-            vertical_scroll_modifier: Modifiers::ALT,
+            zoom_modifier: ModifierPattern::COMMAND,
+            horizontal_scroll_modifier: ModifierPattern::SHIFT,
+            vertical_scroll_modifier: ModifierPattern::ALT,
             surrender_focus_on: SurrenderFocusOn::default(),
         }
     }
@@ -317,12 +318,15 @@ pub struct InputState {
     /// Which modifier keys are down at the start of the frame?
     pub modifiers: Modifiers,
 
+    /// Which OS are we running on? Needed to resolve the "command" key (⌘ vs Ctrl).
+    pub os: OperatingSystem,
+
     /// The keys that are currently being held down.
     ///
     /// Keys released this frame are NOT considered down.
     ///
     /// These are *logical* keys, so the numpad Enter shows up here as
-    /// [`Key::Enter`]. See [`Self::codes_down`] for the physical keys.
+    /// [`crate::NamedKey::Enter`]. See [`Self::codes_down`] for the physical keys.
     pub keys_down: HashSet<Key>,
 
     /// The physical keys that are currently being held down.
@@ -365,6 +369,7 @@ impl Default for InputState {
             stable_dt: 1.0 / 60.0,
             focused: false,
             modifiers: Default::default(),
+            os: Default::default(),
             keys_down: Default::default(),
             codes_down: Default::default(),
             events: Default::default(),
@@ -381,6 +386,7 @@ impl InputState {
         requested_immediate_repaint_prev_frame: bool,
         pixels_per_point: f32,
         options: InputOptions,
+        os: OperatingSystem,
     ) -> Self {
         profiling::function_scope!();
 
@@ -423,7 +429,7 @@ impl InputState {
                     if *pressed {
                         // NOTE: `repeat` is derived from the logical key only, so that
                         // it keeps working for integrations that don't report a physical key.
-                        let first_press = keys_down.insert(*key);
+                        let first_press = keys_down.insert(key.clone());
                         *repeat = !first_press;
                         if let Some(physical_key) = *physical_key {
                             codes_down.insert(physical_key);
@@ -449,6 +455,7 @@ impl InputState {
                         *delta,
                         *phase,
                         *modifiers,
+                        os,
                     );
                 }
                 Event::ModifiersChanged(new_modifiers) => {
@@ -480,7 +487,7 @@ impl InputState {
             let dt = stable_dt.at_most(0.1);
             self.wheel.after_events(time, dt);
 
-            let is_zoom = self.wheel.modifiers.matches_any(options.zoom_modifier);
+            let is_zoom = options.zoom_modifier.matches_any(self.wheel.modifiers, os);
 
             if is_zoom {
                 zoom_factor_delta *= (options.scroll_zoom_speed
@@ -510,6 +517,7 @@ impl InputState {
             stable_dt,
             focused: new.focused,
             modifiers,
+            os,
             keys_down,
             codes_down,
             events: new.events.clone(), // TODO(emilk): remove clone() and use raw.events
@@ -618,11 +626,13 @@ impl InputState {
             let mut zoom = Vec2::splat(self.zoom_factor_delta);
 
             let is_horizontal = self
-                .modifiers
-                .matches_any(self.options.horizontal_scroll_modifier);
+                .options
+                .horizontal_scroll_modifier
+                .matches_any(self.modifiers, self.os);
             let is_vertical = self
-                .modifiers
-                .matches_any(self.options.vertical_scroll_modifier);
+                .options
+                .vertical_scroll_modifier
+                .matches_any(self.modifiers, self.os);
 
             if is_horizontal && !is_vertical {
                 // Horizontal-only zooming.
@@ -708,13 +718,18 @@ impl InputState {
     ///
     /// Includes key-repeat events.
     ///
-    /// This uses [`Modifiers::matches_logically`] to match modifiers,
+    /// This uses [`ModifierPattern::matches_logically`] to match modifiers,
     /// meaning extra Shift and Alt modifiers are ignored.
     /// Therefore, you should match most specific shortcuts first,
     /// i.e. check for `Cmd-Shift-S` ("Save as…") before `Cmd-S` ("Save"),
     /// so that a user pressing `Cmd-Shift-S` won't trigger the wrong command!
-    pub fn count_and_consume_key(&mut self, modifiers: Modifiers, logical_key: Key) -> usize {
+    pub fn count_and_consume_key(
+        &mut self,
+        modifiers: ModifierPattern,
+        logical_key: &Key,
+    ) -> usize {
         let mut count = 0usize;
+        let os = self.os;
 
         self.events.retain(|event| {
             let is_match = matches!(
@@ -724,7 +739,7 @@ impl InputState {
                     modifiers: ev_mods,
                     pressed: true,
                     ..
-                } if *ev_key == logical_key && ev_mods.matches_logically(modifiers)
+                } if ev_key.matches(logical_key) && modifiers.matches_logically(*ev_mods, os)
             );
 
             count += is_match as usize;
@@ -739,12 +754,12 @@ impl InputState {
     ///
     /// Includes key-repeat events.
     ///
-    /// This uses [`Modifiers::matches_logically`] to match modifiers,
+    /// This uses [`ModifierPattern::matches_logically`] to match modifiers,
     /// meaning extra Shift and Alt modifiers are ignored.
     /// Therefore, you should match most specific shortcuts first,
     /// i.e. check for `Cmd-Shift-S` ("Save as…") before `Cmd-S` ("Save"),
     /// so that a user pressing `Cmd-Shift-S` won't trigger the wrong command!
-    pub fn consume_key(&mut self, modifiers: Modifiers, logical_key: Key) -> bool {
+    pub fn consume_key(&mut self, modifiers: ModifierPattern, logical_key: &Key) -> bool {
         self.count_and_consume_key(modifiers, logical_key) > 0
     }
 
@@ -752,7 +767,7 @@ impl InputState {
     ///
     /// If so, `true` is returned and the key pressed is consumed, so that this will only return `true` once.
     ///
-    /// This uses [`Modifiers::matches_logically`] to match modifiers,
+    /// This uses [`ModifierPattern::matches_logically`] to match modifiers,
     /// meaning extra Shift and Alt modifiers are ignored.
     /// Therefore, you should match most specific shortcuts first,
     /// i.e. check for `Cmd-Shift-S` ("Save as…") before `Cmd-S` ("Save"),
@@ -761,28 +776,28 @@ impl InputState {
         let KeyboardShortcut {
             modifiers,
             logical_key,
-        } = *shortcut;
-        self.consume_key(modifiers, logical_key)
+        } = shortcut;
+        self.consume_key(*modifiers, logical_key)
     }
 
     /// Was the given key pressed this frame?
     ///
     /// Includes key-repeat events.
-    pub fn key_pressed(&self, desired_key: Key) -> bool {
+    pub fn key_pressed(&self, desired_key: &Key) -> bool {
         self.num_presses(desired_key) > 0
     }
 
     /// How many times was the given key pressed this frame?
     ///
     /// Includes key-repeat events.
-    pub fn num_presses(&self, desired_key: Key) -> usize {
+    pub fn num_presses(&self, desired_key: &Key) -> usize {
         self.events
             .iter()
             .filter(|event| {
                 matches!(
                     event,
                     Event::Key { key, pressed: true, .. }
-                    if *key == desired_key
+                    if key.matches(desired_key)
                 )
             })
             .count()
@@ -791,12 +806,12 @@ impl InputState {
     /// Is the given key currently held down?
     ///
     /// Keys released this frame are NOT considered down.
-    pub fn key_down(&self, desired_key: Key) -> bool {
-        self.keys_down.contains(&desired_key)
+    pub fn key_down(&self, desired_key: &Key) -> bool {
+        self.keys_down.contains(desired_key)
     }
 
     /// Was the given key released this frame?
-    pub fn key_released(&self, desired_key: Key) -> bool {
+    pub fn key_released(&self, desired_key: &Key) -> bool {
         self.events.iter().any(|event| {
             matches!(
                 event,
@@ -804,7 +819,7 @@ impl InputState {
                     key,
                     pressed: false,
                     ..
-                } if *key == desired_key
+                } if key.matches(desired_key)
             )
         })
     }
@@ -1667,6 +1682,7 @@ impl InputState {
             stable_dt,
             focused,
             modifiers,
+            os,
             keys_down,
             codes_down,
             events,
@@ -1717,7 +1733,8 @@ impl InputState {
         ui.label(format!("predicted_dt: {:.1} ms", 1e3 * predicted_dt));
         ui.label(format!("stable_dt:    {:.1} ms", 1e3 * stable_dt));
         ui.label(format!("focused:   {focused}"));
-        ui.label(format!("modifiers: {modifiers:#?}"));
+        ui.label(format!("modifiers: {modifiers:?}"));
+        ui.label(format!("os: {os:?}"));
         ui.label(format!("keys_down:  {keys_down:?}"));
         ui.label(format!("codes_down: {codes_down:?}"));
         ui.scope(|ui| {

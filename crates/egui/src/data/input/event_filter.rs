@@ -1,4 +1,5 @@
 use super::Event;
+use crate::NamedKey;
 
 // TODO(emilk): generalize this to a proper event filter.
 /// Controls which events that a focused widget will have exclusive access to.
@@ -50,10 +51,12 @@ impl EventFilter {
     pub fn matches(&self, event: &Event) -> bool {
         if let Event::Key { key, .. } = event {
             match key {
-                crate::Key::Tab => self.tab,
-                crate::Key::ArrowUp | crate::Key::ArrowDown => self.vertical_arrows,
-                crate::Key::ArrowRight | crate::Key::ArrowLeft => self.horizontal_arrows,
-                crate::Key::Escape => self.escape,
+                crate::Key::Named(NamedKey::Tab) => self.tab,
+                crate::Key::Named(NamedKey::ArrowUp | NamedKey::ArrowDown) => self.vertical_arrows,
+                crate::Key::Named(NamedKey::ArrowRight | NamedKey::ArrowLeft) => {
+                    self.horizontal_arrows
+                }
+                crate::Key::Named(NamedKey::Escape) => self.escape,
                 _ => true,
             }
         } else {

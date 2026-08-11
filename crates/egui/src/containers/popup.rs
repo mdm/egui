@@ -3,8 +3,8 @@ use core::iter::once;
 use emath::{Align, Pos2, Rect, RectAlign, Vec2, vec2};
 
 use crate::{
-    Area, AreaState, Context, Frame, Id, InnerResponse, Key, LayerId, Layout, Order, Response,
-    Sense, Ui, UiKind, UiStackInfo,
+    Area, AreaState, Context, Frame, Id, InnerResponse, Key, LayerId, Layout, NamedKey, Order,
+    Response, Sense, Ui, UiKind, UiStackInfo,
     containers::menu::{MenuConfig, MenuState, menu_style},
     style::StyleModifier,
 };
@@ -622,7 +622,7 @@ impl<'a> Popup<'a> {
         let is_any_submenu_open = !MenuState::is_deepest_open_sub_menu(&response.response.ctx, id);
 
         let should_close = (!is_any_submenu_open && closed_by_click)
-            || ctx.input(|i| i.key_pressed(Key::Escape))
+            || ctx.input(|i| i.key_pressed(&Key::Named(NamedKey::Escape)))
             || response.response.should_close();
 
         if should_close {

@@ -1,3 +1,5 @@
+use egui::KeyExt as _;
+
 use super::{AppRunner, canvas_content_rect};
 
 pub fn pos_from_mouse_event(
@@ -163,50 +165,34 @@ pub fn translate_code(code: &str) -> Option<egui::Code> {
     code.parse().ok()
 }
 
+/// Read the modifier state out of a DOM event.
+///
+/// We report only what is physically down. Whether ⌘ or Ctrl counts as the "command"
+/// key is resolved at match time from `Context::os()`, which `eframe` sets from the
+/// user agent. Previously this guessed, which meant the Super key on Windows/Linux
+/// was treated as ⌘ and wrongly enabled Mac-only text editing.
+///
+/// A macro rather than a function because the three `web_sys` event types share these
+/// accessors without sharing a trait.
+macro_rules! modifiers_from_event {
+    ($event:expr) => {{
+        let mut modifiers = egui::Modifiers::empty();
+        modifiers.set(egui::Modifiers::ALT, $event.alt_key());
+        modifiers.set(egui::Modifiers::CONTROL, $event.ctrl_key());
+        modifiers.set(egui::Modifiers::SHIFT, $event.shift_key());
+        modifiers.set(egui::Modifiers::META, $event.meta_key());
+        modifiers
+    }};
+}
+
 pub fn modifiers_from_kb_event(event: &web_sys::KeyboardEvent) -> egui::Modifiers {
-    egui::Modifiers {
-        alt: event.alt_key(),
-        ctrl: event.ctrl_key(),
-        shift: event.shift_key(),
-
-        // Ideally we should know if we are running or mac or not,
-        // but this works good enough for now.
-        mac_cmd: event.meta_key(),
-
-        // Ideally we should know if we are running or mac or not,
-        // but this works good enough for now.
-        command: event.ctrl_key() || event.meta_key(),
-    }
+    modifiers_from_event!(event)
 }
 
 pub fn modifiers_from_mouse_event(event: &web_sys::MouseEvent) -> egui::Modifiers {
-    egui::Modifiers {
-        alt: event.alt_key(),
-        ctrl: event.ctrl_key(),
-        shift: event.shift_key(),
-
-        // Ideally we should know if we are running or mac or not,
-        // but this works good enough for now.
-        mac_cmd: event.meta_key(),
-
-        // Ideally we should know if we are running or mac or not,
-        // but this works good enough for now.
-        command: event.ctrl_key() || event.meta_key(),
-    }
+    modifiers_from_event!(event)
 }
 
 pub fn modifiers_from_wheel_event(event: &web_sys::WheelEvent) -> egui::Modifiers {
-    egui::Modifiers {
-        alt: event.alt_key(),
-        ctrl: event.ctrl_key(),
-        shift: event.shift_key(),
-
-        // Ideally we should know if we are running or mac or not,
-        // but this works good enough for now.
-        mac_cmd: event.meta_key(),
-
-        // Ideally we should know if we are running or mac or not,
-        // but this works good enough for now.
-        command: event.ctrl_key() || event.meta_key(),
-    }
+    modifiers_from_event!(event)
 }

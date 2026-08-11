@@ -2,8 +2,8 @@ use core::any::Any;
 use std::sync::Arc;
 
 use crate::{
-    Context, CursorIcon, Id, LayerId, PointerButton, Popup, PopupKind, Sense, Tooltip, Ui,
-    WidgetRect, WidgetText,
+    Context, CursorIcon, Id, LayerId, ModifiersExt as _, PointerButton, Popup, PopupKind, Sense,
+    Tooltip, Ui, WidgetRect, WidgetText,
     emath::{Align, Pos2, Rect, Vec2},
     pass_state,
 };
@@ -364,7 +364,8 @@ impl Response {
     /// # let mut my_text = String::new();
     /// # fn do_request(_: &str) {}
     /// let response = ui.text_edit_singleline(&mut my_text);
-    /// if response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+    /// # use egui::NamedKey;
+    /// if response.lost_focus() && ui.input(|i| i.key_pressed(&egui::Key::Named(NamedKey::Enter))) {
     ///     do_request(&my_text);
     /// }
     /// # });

@@ -17,7 +17,10 @@ pub use accesskit_winit;
 pub use egui;
 #[cfg(feature = "accesskit")]
 use egui::accesskit;
-use egui::{Pos2, Rect, Theme, Vec2, ViewportBuilder, ViewportCommand, ViewportId, ViewportInfo};
+use egui::{
+    KeyExt as _, ModifiersExt as _, Pos2, Rect, Theme, Vec2, ViewportBuilder, ViewportCommand,
+    ViewportId, ViewportInfo,
+};
 pub use winit;
 
 pub mod clipboard;
@@ -437,7 +440,7 @@ impl State {
                 self.egui_input.focused = focused;
                 if !focused {
                     // Avoid sticky modifiers when focus is lost (egui clears its own copy too).
-                    self.modifiers = egui::Modifiers::default();
+                    self.modifiers = egui::Modifiers::empty();
                 }
                 self.egui_input
                     .events
@@ -484,20 +487,15 @@ impl State {
             WindowEvent::ModifiersChanged(state) => {
                 let state = state.state();
 
-                let alt = state.alt_key();
-                let ctrl = state.control_key();
-                let shift = state.shift_key();
-                let super_ = state.super_key();
-
-                self.modifiers.alt = alt;
-                self.modifiers.ctrl = ctrl;
-                self.modifiers.shift = shift;
-                self.modifiers.mac_cmd = cfg!(target_os = "macos") && super_;
-                self.modifiers.command = if cfg!(target_os = "macos") {
-                    super_
-                } else {
-                    ctrl
-                };
+                // Report only what is physically down. Whether ⌘ or Ctrl counts as the
+                // "command" key is resolved at match time from `Context::os()`, so unlike
+                // before we no longer bake the platform in at compile time here.
+                self.modifiers.set(egui::Modifiers::ALT, state.alt_key());
+                self.modifiers
+                    .set(egui::Modifiers::CONTROL, state.control_key());
+                self.modifiers
+                    .set(egui::Modifiers::SHIFT, state.shift_key());
+                self.modifiers.set(egui::Modifiers::META, state.super_key());
 
                 self.egui_input
                     .events
@@ -1020,13 +1018,13 @@ impl State {
             logical_key.or_else(|| physical_key.and_then(egui::Key::from_code))
         {
             if pressed {
-                if is_cut_command(self.modifiers, active_key) {
+                if is_cut_command(self.modifiers, &active_key) {
                     self.egui_input.events.push(egui::Event::Cut);
                     return;
-                } else if is_copy_command(self.modifiers, active_key) {
+                } else if is_copy_command(self.modifiers, &active_key) {
                     self.egui_input.events.push(egui::Event::Copy);
                     return;
-                } else if is_paste_command(self.modifiers, active_key) {
+                } else if is_paste_command(self.modifiers, &active_key) {
                     if let Some(contents) = self.clipboard.get() {
                         let contents = contents.replace("\r\n", "\n");
                         if !contents.is_empty() {
@@ -1058,8 +1056,10 @@ impl State {
                 // We need to ignore these characters that are side-effects of commands.
                 // Also make sure the key is pressed (not released). On Linux, text might
                 // contain some data even when the key is released.
-                let is_cmd =
-                    self.modifiers.ctrl || self.modifiers.command || self.modifiers.mac_cmd;
+                // Any of Ctrl/⌘ means this keypress is a command, not text input.
+                let is_cmd = self
+                    .modifiers
+                    .intersects(egui::Modifiers::CONTROL | egui::Modifiers::META);
                 if pressed && !is_cmd {
                     self.egui_input
                         .events
@@ -1417,22 +1417,32 @@ fn is_printable_char(chr: char) -> bool {
     !is_in_private_use_area && !chr.is_ascii_control()
 }
 
-fn is_cut_command(modifiers: egui::Modifiers, keycode: egui::Key) -> bool {
-    keycode == egui::Key::Cut
-        || (modifiers.command && keycode == egui::Key::X)
-        || (cfg!(target_os = "windows") && modifiers.shift && keycode == egui::Key::Delete)
+/// The OS we were built for. `egui-winit` is native-only, so this always matches
+/// what `Context::os()` reports.
+fn target_os() -> egui::os::OperatingSystem {
+    egui::os::OperatingSystem::from_target_os()
 }
 
-fn is_copy_command(modifiers: egui::Modifiers, keycode: egui::Key) -> bool {
-    keycode == egui::Key::Copy
-        || (modifiers.command && keycode == egui::Key::C)
-        || (cfg!(target_os = "windows") && modifiers.ctrl && keycode == egui::Key::Insert)
+fn is_cut_command(modifiers: egui::Modifiers, key: &egui::Key) -> bool {
+    key.is_named(egui::NamedKey::Cut)
+        || (modifiers.command(target_os()) && key.is_char('x'))
+        || (cfg!(target_os = "windows")
+            && modifiers.shift()
+            && key.is_named(egui::NamedKey::Delete))
 }
 
-fn is_paste_command(modifiers: egui::Modifiers, keycode: egui::Key) -> bool {
-    keycode == egui::Key::Paste
-        || (modifiers.command && keycode == egui::Key::V)
-        || (cfg!(target_os = "windows") && modifiers.shift && keycode == egui::Key::Insert)
+fn is_copy_command(modifiers: egui::Modifiers, key: &egui::Key) -> bool {
+    key.is_named(egui::NamedKey::Copy)
+        || (modifiers.command(target_os()) && key.is_char('c'))
+        || (cfg!(target_os = "windows") && modifiers.ctrl() && key.is_named(egui::NamedKey::Insert))
+}
+
+fn is_paste_command(modifiers: egui::Modifiers, key: &egui::Key) -> bool {
+    key.is_named(egui::NamedKey::Paste)
+        || (modifiers.command(target_os()) && key.is_char('v'))
+        || (cfg!(target_os = "windows")
+            && modifiers.shift()
+            && key.is_named(egui::NamedKey::Insert))
 }
 
 fn translate_mouse_button(button: winit::event::MouseButton) -> Option<egui::PointerButton> {
@@ -1449,78 +1459,346 @@ fn translate_mouse_button(button: winit::event::MouseButton) -> Option<egui::Poi
 fn key_from_winit_key(key: &winit::keyboard::Key) -> Option<egui::Key> {
     match key {
         winit::keyboard::Key::Named(named_key) => key_from_named_key(*named_key),
-        winit::keyboard::Key::Character(str) => egui::Key::from_name(str.as_str()),
+        winit::keyboard::Key::Character(str) => Some(egui::Key::Character(str.to_lowercase())),
         winit::keyboard::Key::Unidentified(_) | winit::keyboard::Key::Dead(_) => None,
     }
 }
 
+/// Translate a winit *logical* key into the W3C [`egui::NamedKey`] of the same meaning.
+///
+/// Both enums implement the [UI Events `key`][spec] value set, so every variant maps
+/// onto the identically-named one. The sole exception is winit's `Space`, which the
+/// spec spells as the character `" "`.
+///
+/// [spec]: https://www.w3.org/TR/uievents-key/
 fn key_from_named_key(named_key: winit::keyboard::NamedKey) -> Option<egui::Key> {
-    use egui::Key;
     use winit::keyboard::NamedKey;
 
-    Some(match named_key {
-        NamedKey::Enter => Key::Enter,
-        NamedKey::Tab => Key::Tab,
-        NamedKey::ArrowDown => Key::ArrowDown,
-        NamedKey::ArrowLeft => Key::ArrowLeft,
-        NamedKey::ArrowRight => Key::ArrowRight,
-        NamedKey::ArrowUp => Key::ArrowUp,
-        NamedKey::End => Key::End,
-        NamedKey::Home => Key::Home,
-        NamedKey::PageDown => Key::PageDown,
-        NamedKey::PageUp => Key::PageUp,
-        NamedKey::Backspace => Key::Backspace,
-        NamedKey::Delete => Key::Delete,
-        NamedKey::Insert => Key::Insert,
-        NamedKey::Escape => Key::Escape,
-        NamedKey::Cut => Key::Cut,
-        NamedKey::Copy => Key::Copy,
-        NamedKey::Paste => Key::Paste,
+    // The spec has no `Space` named key: the space bar produces a space character.
+    if named_key == NamedKey::Space {
+        return Some(egui::Key::character(' '));
+    }
 
-        NamedKey::Space => Key::Space,
+    /// Maps `winit::NamedKey::Foo` to `egui::NamedKey::Foo` for every listed variant.
+    macro_rules! identical {
+        ($($variant:ident),* $(,)?) => {
+            match named_key {
+                $(NamedKey::$variant => return Some(egui::Key::Named(egui::NamedKey::$variant)),)*
+                _ => {}
+            }
+        };
+    }
 
-        NamedKey::F1 => Key::F1,
-        NamedKey::F2 => Key::F2,
-        NamedKey::F3 => Key::F3,
-        NamedKey::F4 => Key::F4,
-        NamedKey::F5 => Key::F5,
-        NamedKey::F6 => Key::F6,
-        NamedKey::F7 => Key::F7,
-        NamedKey::F8 => Key::F8,
-        NamedKey::F9 => Key::F9,
-        NamedKey::F10 => Key::F10,
-        NamedKey::F11 => Key::F11,
-        NamedKey::F12 => Key::F12,
-        NamedKey::F13 => Key::F13,
-        NamedKey::F14 => Key::F14,
-        NamedKey::F15 => Key::F15,
-        NamedKey::F16 => Key::F16,
-        NamedKey::F17 => Key::F17,
-        NamedKey::F18 => Key::F18,
-        NamedKey::F19 => Key::F19,
-        NamedKey::F20 => Key::F20,
-        NamedKey::F21 => Key::F21,
-        NamedKey::F22 => Key::F22,
-        NamedKey::F23 => Key::F23,
-        NamedKey::F24 => Key::F24,
-        NamedKey::F25 => Key::F25,
-        NamedKey::F26 => Key::F26,
-        NamedKey::F27 => Key::F27,
-        NamedKey::F28 => Key::F28,
-        NamedKey::F29 => Key::F29,
-        NamedKey::F30 => Key::F30,
-        NamedKey::F31 => Key::F31,
-        NamedKey::F32 => Key::F32,
-        NamedKey::F33 => Key::F33,
-        NamedKey::F34 => Key::F34,
-        NamedKey::F35 => Key::F35,
+    identical!(
+        AVRInput,
+        AVRPower,
+        Accept,
+        Again,
+        AllCandidates,
+        Alphanumeric,
+        Alt,
+        AltGraph,
+        AppSwitch,
+        ArrowDown,
+        ArrowLeft,
+        ArrowRight,
+        ArrowUp,
+        Attn,
+        AudioBalanceLeft,
+        AudioBalanceRight,
+        AudioBassBoostDown,
+        AudioBassBoostToggle,
+        AudioBassBoostUp,
+        AudioFaderFront,
+        AudioFaderRear,
+        AudioSurroundModeNext,
+        AudioTrebleDown,
+        AudioTrebleUp,
+        AudioVolumeDown,
+        AudioVolumeMute,
+        AudioVolumeUp,
+        Backspace,
+        BrightnessDown,
+        BrightnessUp,
+        BrowserBack,
+        BrowserFavorites,
+        BrowserForward,
+        BrowserHome,
+        BrowserRefresh,
+        BrowserSearch,
+        BrowserStop,
+        Call,
+        Camera,
+        CameraFocus,
+        Cancel,
+        CapsLock,
+        ChannelDown,
+        ChannelUp,
+        Clear,
+        Close,
+        ClosedCaptionToggle,
+        CodeInput,
+        ColorF0Red,
+        ColorF1Green,
+        ColorF2Yellow,
+        ColorF3Blue,
+        ColorF4Grey,
+        ColorF5Brown,
+        Compose,
+        ContextMenu,
+        Control,
+        Convert,
+        Copy,
+        CrSel,
+        Cut,
+        DVR,
+        Delete,
+        Dimmer,
+        DisplaySwap,
+        Eisu,
+        Eject,
+        End,
+        EndCall,
+        Enter,
+        EraseEof,
+        Escape,
+        ExSel,
+        Execute,
+        Exit,
+        F1,
+        F10,
+        F11,
+        F12,
+        F13,
+        F14,
+        F15,
+        F16,
+        F17,
+        F18,
+        F19,
+        F2,
+        F20,
+        F21,
+        F22,
+        F23,
+        F24,
+        F25,
+        F26,
+        F27,
+        F28,
+        F29,
+        F3,
+        F30,
+        F31,
+        F32,
+        F33,
+        F34,
+        F35,
+        F4,
+        F5,
+        F6,
+        F7,
+        F8,
+        F9,
+        FavoriteClear0,
+        FavoriteClear1,
+        FavoriteClear2,
+        FavoriteClear3,
+        FavoriteRecall0,
+        FavoriteRecall1,
+        FavoriteRecall2,
+        FavoriteRecall3,
+        FavoriteStore0,
+        FavoriteStore1,
+        FavoriteStore2,
+        FavoriteStore3,
+        FinalMode,
+        Find,
+        Fn,
+        FnLock,
+        GoBack,
+        GoHome,
+        GroupFirst,
+        GroupLast,
+        GroupNext,
+        GroupPrevious,
+        Guide,
+        GuideNextDay,
+        GuidePreviousDay,
+        HangulMode,
+        HanjaMode,
+        Hankaku,
+        HeadsetHook,
+        Help,
+        Hibernate,
+        Hiragana,
+        HiraganaKatakana,
+        Home,
+        Info,
+        Insert,
+        InstantReplay,
+        JunjaMode,
+        KanaMode,
+        KanjiMode,
+        Katakana,
+        Key11,
+        Key12,
+        LastNumberRedial,
+        LaunchApplication1,
+        LaunchApplication2,
+        LaunchCalendar,
+        LaunchContacts,
+        LaunchMail,
+        LaunchMediaPlayer,
+        LaunchMusicPlayer,
+        LaunchPhone,
+        LaunchScreenSaver,
+        LaunchSpreadsheet,
+        LaunchWebBrowser,
+        LaunchWebCam,
+        LaunchWordProcessor,
+        Link,
+        ListProgram,
+        LiveContent,
+        Lock,
+        LogOff,
+        MailForward,
+        MailReply,
+        MailSend,
+        MannerMode,
+        MediaApps,
+        MediaAudioTrack,
+        MediaClose,
+        MediaFastForward,
+        MediaLast,
+        MediaPause,
+        MediaPlay,
+        MediaPlayPause,
+        MediaRecord,
+        MediaRewind,
+        MediaSkipBackward,
+        MediaSkipForward,
+        MediaStepBackward,
+        MediaStepForward,
+        MediaStop,
+        MediaTopMenu,
+        MediaTrackNext,
+        MediaTrackPrevious,
+        Meta,
+        MicrophoneToggle,
+        MicrophoneVolumeDown,
+        MicrophoneVolumeMute,
+        MicrophoneVolumeUp,
+        ModeChange,
+        NavigateIn,
+        NavigateNext,
+        NavigateOut,
+        NavigatePrevious,
+        New,
+        NextCandidate,
+        NextFavoriteChannel,
+        NextUserProfile,
+        NonConvert,
+        Notification,
+        NumLock,
+        OnDemand,
+        Open,
+        PageDown,
+        PageUp,
+        Pairing,
+        Paste,
+        Pause,
+        PinPDown,
+        PinPMove,
+        PinPToggle,
+        PinPUp,
+        Play,
+        PlaySpeedDown,
+        PlaySpeedReset,
+        PlaySpeedUp,
+        Power,
+        PowerOff,
+        PreviousCandidate,
+        Print,
+        PrintScreen,
+        Process,
+        Props,
+        RandomToggle,
+        RcLowBattery,
+        RecordSpeedNext,
+        Redo,
+        RfBypass,
+        Romaji,
+        STBInput,
+        STBPower,
+        Save,
+        ScanChannelsToggle,
+        ScreenModeNext,
+        ScrollLock,
+        Select,
+        Settings,
+        Shift,
+        SingleCandidate,
+        Soft1,
+        Soft2,
+        Soft3,
+        Soft4,
+        SpeechCorrectionList,
+        SpeechInputToggle,
+        SpellCheck,
+        SplitScreenToggle,
+        Standby,
+        Subtitle,
+        Symbol,
+        SymbolLock,
+        TV,
+        TV3DMode,
+        TVAntennaCable,
+        TVAudioDescription,
+        TVAudioDescriptionMixDown,
+        TVAudioDescriptionMixUp,
+        TVContentsMenu,
+        TVDataService,
+        TVInput,
+        TVInputComponent1,
+        TVInputComponent2,
+        TVInputComposite1,
+        TVInputComposite2,
+        TVInputHDMI1,
+        TVInputHDMI2,
+        TVInputHDMI3,
+        TVInputHDMI4,
+        TVInputVGA1,
+        TVMediaContext,
+        TVNetwork,
+        TVNumberEntry,
+        TVPower,
+        TVRadioService,
+        TVSatellite,
+        TVSatelliteBS,
+        TVSatelliteCS,
+        TVSatelliteToggle,
+        TVTerrestrialAnalog,
+        TVTerrestrialDigital,
+        TVTimer,
+        Tab,
+        Teletext,
+        Undo,
+        VideoModeNext,
+        VoiceDial,
+        WakeUp,
+        Wink,
+        Zenkaku,
+        ZenkakuHankaku,
+        ZoomIn,
+        ZoomOut,
+        ZoomToggle,
+    );
 
-        NamedKey::BrowserBack => Key::BrowserBack,
-        _ => {
-            log::trace!("Unknown key: {named_key:?}");
-            return None;
-        }
-    })
+    // Not mapped: `Hyper` and `Super`, which the W3C spec deprecates in favor of
+    // `Meta`, matching how `code_from_key_code` drops their physical counterparts.
+    log::trace!("Unknown key: {named_key:?}");
+    None
 }
 
 /// Translate a winit physical key into the W3C [`egui::Code`] of the same position.

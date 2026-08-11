@@ -1,4 +1,5 @@
 use crate::web::string_from_js_value;
+use egui::{KeyExt as _, NamedKey};
 
 use super::{
     AppRunner, Closure, DEBUG_RESIZE, JsCast as _, JsValue, WebRunner, button_from_mouse_event,
@@ -153,8 +154,7 @@ fn install_keydown(runner_ref: &WebRunner, target: &EventTarget) -> Result<(), J
             }
 
             let modifiers = modifiers_from_kb_event(&event);
-            if !modifiers.ctrl
-                && !modifiers.command
+            if !modifiers.intersects(egui::Modifiers::CONTROL | egui::Modifiers::META)
                 // When text agent is focused, it is responsible for handling input events
                 && !runner.text_agent.has_focus()
                 && let Some(text) = text_from_keyboard_event(&event)
@@ -201,7 +201,7 @@ pub(crate) fn on_keydown(event: web_sys::KeyboardEvent, runner: &mut AppRunner) 
     // `egui::Key`) and non-Latin layouts still produce a `Key` event.
     if let Some(active_key) = logical_key.or_else(|| physical_key.and_then(egui::Key::from_code)) {
         let egui_event = egui::Event::Key {
-            key: active_key,
+            key: active_key.clone(),
             physical_key,
             pressed: true,
             repeat: false, // egui will fill this in for us!
@@ -211,7 +211,7 @@ pub(crate) fn on_keydown(event: web_sys::KeyboardEvent, runner: &mut AppRunner) 
         runner.input.raw.events.push(egui_event);
         runner.needs_repaint.repaint_asap();
 
-        let prevent_default = should_prevent_default_for_key(runner, &modifiers, active_key);
+        let prevent_default = should_prevent_default_for_key(runner, &modifiers, &active_key);
 
         if false {
             log::debug!(
@@ -237,7 +237,7 @@ pub(crate) fn on_keydown(event: web_sys::KeyboardEvent, runner: &mut AppRunner) 
 fn should_prevent_default_for_key(
     runner: &AppRunner,
     modifiers: &egui::Modifiers,
-    egui_key: egui::Key,
+    egui_key: &egui::Key,
 ) -> bool {
     // NOTE: We never want to prevent:
     // * F5 / cmd-R (refresh)
@@ -245,19 +245,15 @@ fn should_prevent_default_for_key(
     // * cmd/ctrl-c/v/x (lest we prevent copy/paste/cut events)
 
     // Prevent cmd/ctrl plus these keys from triggering the default browser action:
-    let keys = [
-        egui::Key::Comma, // cmd-, opens options on macOS, which egui apps may wanna "steal"
-        egui::Key::O,     // open
-        egui::Key::P,     // print (cmd-P is common for command palette)
-        egui::Key::S,     // save
-    ];
-    for key in keys {
-        if egui_key == key && (modifiers.ctrl || modifiers.command || modifiers.mac_cmd) {
-            return true;
-        }
+    // ',' opens options on macOS, which egui apps may wanna "steal";
+    // 'o' open; 'p' print (cmd-P is common for command palette); 's' save.
+    if matches!(egui_key.as_char(), Some(',' | 'o' | 'p' | 's'))
+        && modifiers.intersects(egui::Modifiers::CONTROL | egui::Modifiers::META)
+    {
+        return true;
     }
 
-    if egui_key == egui::Key::Space && !runner.text_agent.has_focus() {
+    if egui_key.is_char(' ') && !runner.text_agent.has_focus() {
         // Space scrolls the web page, but we don't want that while canvas has focus
         // However, don't prevent it if text agent has focus, or we can't type space!
         return true;
@@ -265,16 +261,19 @@ fn should_prevent_default_for_key(
 
     matches!(
         egui_key,
-        // Prevent browser from focusing the next HTML element.
-        // egui uses Tab to move focus within the egui app.
-        egui::Key::Tab
-
-        // So we don't go back to previous page while canvas has focus
-        | egui::Key::Backspace
-
-        // Don't scroll web page while canvas has focus.
-        // Also, cmd-left is "back" on Mac (https://github.com/emilk/egui/issues/58)
-        | egui::Key::ArrowDown | egui::Key::ArrowLeft | egui::Key::ArrowRight |  egui::Key::ArrowUp
+        egui::Key::Named(
+            // Prevent the browser from focusing the next HTML element;
+            // egui uses Tab to move focus within the egui app.
+            NamedKey::Tab
+            // So we don't go back to the previous page while the canvas has focus.
+            | NamedKey::Backspace
+            // Don't scroll the web page while the canvas has focus.
+            // Also, cmd-left is "back" on Mac (https://github.com/emilk/egui/issues/58)
+            | NamedKey::ArrowDown
+            | NamedKey::ArrowLeft
+            | NamedKey::ArrowRight
+            | NamedKey::ArrowUp
+        )
     )
 }
 
@@ -855,7 +854,7 @@ fn install_wheel(runner_ref: &WebRunner, target: &EventTarget) -> Result<(), JsV
 
         let modifiers = modifiers_from_wheel_event(&event);
 
-        let egui_event = if modifiers.ctrl && !runner.input.modifiers.ctrl {
+        let egui_event = if modifiers.ctrl() && !runner.input.modifiers.ctrl() {
             // The browser is saying the ctrl key is down, but it isn't _really_.
             // This happens on pinch-to-zoom on multitouch trackpads
             // egui will treat ctrl+scroll as zoom, so it all works.

@@ -1,7 +1,7 @@
 use core::any::Any;
 use std::sync::Arc;
 
-use crate::{Context, CursorIcon, Plugin, Ui};
+use crate::{Context, CursorIcon, NamedKey, Plugin, Ui};
 
 /// Plugin for tracking drag-and-drop payload.
 ///
@@ -37,8 +37,12 @@ impl Plugin for DragAndDrop {
         let has_any_payload = self.payload.is_some();
 
         if has_any_payload {
-            let abort_dnd_due_to_escape_key =
-                ui.input_mut(|i| i.consume_key(crate::Modifiers::NONE, crate::Key::Escape));
+            let abort_dnd_due_to_escape_key = ui.input_mut(|i| {
+                i.consume_key(
+                    crate::ModifierPattern::NONE,
+                    &crate::Key::Named(NamedKey::Escape),
+                )
+            });
 
             if abort_dnd_due_to_escape_key {
                 self.payload = None;

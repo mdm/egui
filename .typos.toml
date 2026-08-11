@@ -147,6 +147,11 @@ zeroterminated = "null-terminated"
 zero-terminated = "null-terminated"
 
 
+[default.extend-identifiers]
+# W3C UI Events spells this TV-remote key "Grey"; it is the identifier used by
+# both `winit` and `keyboard-types`, so we cannot rename it.
+ColorF4Grey = "ColorF4Grey"
+
 [files]
 extend-exclude = ["web_demo/egui_demo_app.js"] # auto-generated
 

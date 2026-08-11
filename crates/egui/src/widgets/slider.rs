@@ -3,9 +3,9 @@
 use core::ops::RangeInclusive;
 
 use crate::{
-    Color32, DragValue, EventFilter, Key, Label, MINUS_CHAR_STR, NumExt as _, Pos2, Rangef, Rect,
-    Response, Sense, TextStyle, TextWrapMode, Ui, Vec2, Widget, WidgetInfo, WidgetText, emath,
-    epaint, lerp, pos2, remap, remap_clamp, style, style::HandleShape, vec2,
+    Color32, DragValue, EventFilter, Key, Label, MINUS_CHAR_STR, NamedKey, NumExt as _, Pos2,
+    Rangef, Rect, Response, Sense, TextStyle, TextWrapMode, Ui, Vec2, Widget, WidgetInfo,
+    WidgetText, emath, epaint, lerp, pos2, remap, remap_clamp, style, style::HandleShape, vec2,
 };
 
 use super::drag_value::clamp_value_to_range;
@@ -698,15 +698,21 @@ impl Slider<'_> {
             });
 
             let (dec_key, inc_key) = match self.orientation {
-                SliderOrientation::Horizontal => (Key::ArrowLeft, Key::ArrowRight),
+                SliderOrientation::Horizontal => (
+                    Key::Named(NamedKey::ArrowLeft),
+                    Key::Named(NamedKey::ArrowRight),
+                ),
                 // Note that this is for moving the slider position,
                 // so up = decrement y coordinate:
-                SliderOrientation::Vertical => (Key::ArrowUp, Key::ArrowDown),
+                SliderOrientation::Vertical => (
+                    Key::Named(NamedKey::ArrowUp),
+                    Key::Named(NamedKey::ArrowDown),
+                ),
             };
 
             ui.input(|input| {
-                decrement += input.num_presses(dec_key);
-                increment += input.num_presses(inc_key);
+                decrement += input.num_presses(&dec_key);
+                increment += input.num_presses(&inc_key);
             });
         }
 
@@ -888,9 +894,10 @@ impl Slider<'_> {
     fn value_ui(&mut self, ui: &mut Ui, position_range: Rangef) -> Response {
         // If [`DragValue`] is controlled from the keyboard and `step` is defined, set speed to `step`
         let change = ui.input(|input| {
-            input.num_presses(Key::ArrowUp) as i32 + input.num_presses(Key::ArrowRight) as i32
-                - input.num_presses(Key::ArrowDown) as i32
-                - input.num_presses(Key::ArrowLeft) as i32
+            input.num_presses(&Key::Named(NamedKey::ArrowUp)) as i32
+                + input.num_presses(&Key::Named(NamedKey::ArrowRight)) as i32
+                - input.num_presses(&Key::Named(NamedKey::ArrowDown)) as i32
+                - input.num_presses(&Key::Named(NamedKey::ArrowLeft)) as i32
         });
 
         let any_change = change != 0;
