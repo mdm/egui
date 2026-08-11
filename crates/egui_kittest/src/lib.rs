@@ -538,11 +538,11 @@ impl<'a, State> Harness<'a, State> {
 
     /// Press the given keys in combination.
     ///
-    /// For e.g. [`Key::character('a')`] + [`Key::character('b')`] this would generate:
-    /// - Press [`Key::character('a')`]
-    /// - Press [`Key::character('b')`]
-    /// - Release [`Key::character('b')`]
-    /// - Release [`Key::character('a')`]
+    /// For e.g. `Key::character('a')` + `Key::character('b')` this would generate:
+    /// - Press `Key::character('a')`
+    /// - Press `Key::character('b')`
+    /// - Release `Key::character('b')`
+    /// - Release `Key::character('a')`
     pub fn key_combination(&self, keys: &[Key]) {
         for key in keys {
             self.key_down(key.clone());
@@ -554,12 +554,12 @@ impl<'a, State> Harness<'a, State> {
 
     /// Press the given keys in combination, with modifiers.
     ///
-    /// For e.g. [`ModifierPattern::COMMAND`] + [`Key::character('a')`] + [`Key::character('b')`] this would generate:
+    /// For e.g. [`ModifierPattern::COMMAND`] + `Key::character('a')` + `Key::character('b')` this would generate:
     /// - Press [`ModifierPattern::COMMAND`]
-    /// - Press [`Key::character('a')`]
-    /// - Press [`Key::character('b')`]
-    /// - Release [`Key::character('b')`]
-    /// - Release [`Key::character('a')`]
+    /// - Press `Key::character('a')`
+    /// - Press `Key::character('b')`
+    /// - Release `Key::character('b')`
+    /// - Release `Key::character('a')`
     /// - Release [`ModifierPattern::COMMAND`]
     pub fn key_combination_modifiers(&self, modifiers: ModifierPattern, keys: &[Key]) {
         self.modifiers(modifiers);

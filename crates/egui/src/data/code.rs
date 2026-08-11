@@ -5,7 +5,7 @@
 /// This is a re-export of [`keyboard_types::Code`], which implements the
 /// [W3C UI Events `KeyboardEvent.code`][spec] value set. Unlike [`crate::Key`],
 /// which is *logical* and therefore folds physically distinct keys together
-/// (`Code::NumpadEnter` and `Code::Enter` both produce [`crate::Key::Named(NamedKey::Enter)`]),
+/// (`Code::NumpadEnter` and `Code::Enter` both produce [`crate::NamedKey::Enter`]),
 /// `Code` keeps every physical key distinct.
 ///
 /// Use this when the position of the key matters more than its label — for

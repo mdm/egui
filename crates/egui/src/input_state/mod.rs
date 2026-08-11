@@ -326,7 +326,7 @@ pub struct InputState {
     /// Keys released this frame are NOT considered down.
     ///
     /// These are *logical* keys, so the numpad Enter shows up here as
-    /// [`Key::Named(NamedKey::Enter)`]. See [`Self::codes_down`] for the physical keys.
+    /// [`crate::NamedKey::Enter`]. See [`Self::codes_down`] for the physical keys.
     pub keys_down: HashSet<Key>,
 
     /// The physical keys that are currently being held down.
