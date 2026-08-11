@@ -100,6 +100,7 @@ image = { version = "0.25.6", default-features = false } # Can't update to 0.25.
 itertools = "0.15.0"
 jiff = { version = "0.2.35", default-features = false }
 js-sys = "0.3.103"
+keyboard-types = "0.8.3"
 kittest = { version = "0.4.0" }
 log = { version = "0.4.33", features = ["std"] }
 mimalloc = "0.1.52"

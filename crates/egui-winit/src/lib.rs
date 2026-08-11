@@ -996,7 +996,7 @@ impl State {
         let pressed = *state == winit::event::ElementState::Pressed;
 
         let physical_key = if let winit::keyboard::PhysicalKey::Code(keycode) = *physical_key {
-            key_from_key_code(keycode)
+            code_from_key_code(keycode)
         } else {
             None
         };
@@ -1016,7 +1016,9 @@ impl State {
         // emit events as if the corresponding keys from the Latin layout were pressed. In this case, clipboard shortcuts
         // are mapped to the physical keys that normally contain C, X, V, etc.
         // See also: https://github.com/emilk/egui/issues/3653
-        if let Some(active_key) = logical_key.or(physical_key) {
+        if let Some(active_key) =
+            logical_key.or_else(|| physical_key.and_then(egui::Key::from_code))
+        {
             if pressed {
                 if is_cut_command(self.modifiers, active_key) {
                     self.egui_input.events.push(egui::Event::Cut);
@@ -1521,141 +1523,235 @@ fn key_from_named_key(named_key: winit::keyboard::NamedKey) -> Option<egui::Key>
     })
 }
 
-fn key_from_key_code(key: winit::keyboard::KeyCode) -> Option<egui::Key> {
-    use egui::Key;
+/// Translate a winit physical key into the W3C [`egui::Code`] of the same position.
+///
+/// Both enums implement the [UI Events `code`][spec] value set, so almost every
+/// variant maps onto the identically-named one; the `identical!` macro below makes
+/// that correspondence explicit, and any future divergence in either crate becomes
+/// a compile error rather than a silently dropped key.
+///
+/// Note that this deliberately performs **no** folding: unlike the logical
+/// [`egui::Key`], `Code::NumpadEnter` stays distinct from `Code::Enter`, and
+/// `Code::Numpad5` from `Code::Digit5`. Use [`egui::Key::from_code`] to get the
+/// logical key a physical key would produce.
+///
+/// [spec]: https://www.w3.org/TR/uievents-code/
+fn code_from_key_code(key: winit::keyboard::KeyCode) -> Option<egui::Code> {
+    use egui::Code;
     use winit::keyboard::KeyCode;
 
+    /// Maps `KeyCode::Foo` to `Code::Foo` for every listed variant.
+    macro_rules! identical {
+        ($($variant:ident),* $(,)?) => {
+            match key {
+                $(KeyCode::$variant => return Some(Code::$variant),)*
+                _ => {}
+            }
+        };
+    }
+
+    identical!(
+        Backquote,
+        Backslash,
+        BracketLeft,
+        BracketRight,
+        Comma,
+        Digit0,
+        Digit1,
+        Digit2,
+        Digit3,
+        Digit4,
+        Digit5,
+        Digit6,
+        Digit7,
+        Digit8,
+        Digit9,
+        Equal,
+        IntlBackslash,
+        IntlRo,
+        IntlYen,
+        KeyA,
+        KeyB,
+        KeyC,
+        KeyD,
+        KeyE,
+        KeyF,
+        KeyG,
+        KeyH,
+        KeyI,
+        KeyJ,
+        KeyK,
+        KeyL,
+        KeyM,
+        KeyN,
+        KeyO,
+        KeyP,
+        KeyQ,
+        KeyR,
+        KeyS,
+        KeyT,
+        KeyU,
+        KeyV,
+        KeyW,
+        KeyX,
+        KeyY,
+        KeyZ,
+        Minus,
+        Period,
+        Quote,
+        Semicolon,
+        Slash,
+        AltLeft,
+        AltRight,
+        Backspace,
+        CapsLock,
+        ContextMenu,
+        ControlLeft,
+        ControlRight,
+        Enter,
+        ShiftLeft,
+        ShiftRight,
+        Space,
+        Tab,
+        Convert,
+        KanaMode,
+        Lang1,
+        Lang2,
+        Lang3,
+        Lang4,
+        Lang5,
+        NonConvert,
+        Delete,
+        End,
+        Help,
+        Home,
+        Insert,
+        PageDown,
+        PageUp,
+        ArrowDown,
+        ArrowLeft,
+        ArrowRight,
+        ArrowUp,
+        NumLock,
+        Numpad0,
+        Numpad1,
+        Numpad2,
+        Numpad3,
+        Numpad4,
+        Numpad5,
+        Numpad6,
+        Numpad7,
+        Numpad8,
+        Numpad9,
+        NumpadAdd,
+        NumpadBackspace,
+        NumpadClear,
+        NumpadClearEntry,
+        NumpadComma,
+        NumpadDecimal,
+        NumpadDivide,
+        NumpadEnter,
+        NumpadEqual,
+        NumpadHash,
+        NumpadMemoryAdd,
+        NumpadMemoryClear,
+        NumpadMemoryRecall,
+        NumpadMemoryStore,
+        NumpadMemorySubtract,
+        NumpadMultiply,
+        NumpadParenLeft,
+        NumpadParenRight,
+        NumpadStar,
+        NumpadSubtract,
+        Escape,
+        Fn,
+        FnLock,
+        PrintScreen,
+        ScrollLock,
+        Pause,
+        BrowserBack,
+        BrowserFavorites,
+        BrowserForward,
+        BrowserHome,
+        BrowserRefresh,
+        BrowserSearch,
+        BrowserStop,
+        Eject,
+        LaunchApp1,
+        LaunchApp2,
+        LaunchMail,
+        MediaPlayPause,
+        MediaSelect,
+        MediaStop,
+        MediaTrackNext,
+        MediaTrackPrevious,
+        Power,
+        Sleep,
+        AudioVolumeDown,
+        AudioVolumeMute,
+        AudioVolumeUp,
+        WakeUp,
+        Abort,
+        Resume,
+        Suspend,
+        Again,
+        Copy,
+        Cut,
+        Find,
+        Open,
+        Paste,
+        Props,
+        Select,
+        Undo,
+        Hiragana,
+        Katakana,
+        F1,
+        F2,
+        F3,
+        F4,
+        F5,
+        F6,
+        F7,
+        F8,
+        F9,
+        F10,
+        F11,
+        F12,
+        F13,
+        F14,
+        F15,
+        F16,
+        F17,
+        F18,
+        F19,
+        F20,
+        F21,
+        F22,
+        F23,
+        F24,
+        F25,
+        F26,
+        F27,
+        F28,
+        F29,
+        F30,
+        F31,
+        F32,
+        F33,
+        F34,
+        F35,
+    );
+
     Some(match key {
-        KeyCode::ArrowDown => Key::ArrowDown,
-        KeyCode::ArrowLeft => Key::ArrowLeft,
-        KeyCode::ArrowRight => Key::ArrowRight,
-        KeyCode::ArrowUp => Key::ArrowUp,
+        // winit calls the ⌘/Windows keys "Super"; the W3C spec calls them "Meta".
+        KeyCode::SuperLeft => Code::MetaLeft,
+        KeyCode::SuperRight => Code::MetaRight,
 
-        KeyCode::Escape => Key::Escape,
-        KeyCode::Tab => Key::Tab,
-        KeyCode::Backspace => Key::Backspace,
-        KeyCode::Enter | KeyCode::NumpadEnter => Key::Enter,
-
-        KeyCode::Insert => Key::Insert,
-        KeyCode::Delete => Key::Delete,
-        KeyCode::Home => Key::Home,
-        KeyCode::End => Key::End,
-        KeyCode::PageUp => Key::PageUp,
-        KeyCode::PageDown => Key::PageDown,
-
-        // Punctuation
-        KeyCode::Space => Key::Space,
-        KeyCode::Comma => Key::Comma,
-        KeyCode::Period => Key::Period,
-        // KeyCode::Colon => Key::Colon, // NOTE: there is no physical colon key on an american keyboard
-        KeyCode::Semicolon => Key::Semicolon,
-        KeyCode::Backslash => Key::Backslash,
-        KeyCode::Slash | KeyCode::NumpadDivide => Key::Slash,
-        KeyCode::BracketLeft => Key::OpenBracket,
-        KeyCode::BracketRight => Key::CloseBracket,
-        KeyCode::Backquote => Key::Backtick,
-        KeyCode::Quote => Key::Quote,
-
-        KeyCode::Cut => Key::Cut,
-        KeyCode::Copy => Key::Copy,
-        KeyCode::Paste => Key::Paste,
-        KeyCode::Minus | KeyCode::NumpadSubtract => Key::Minus,
-        KeyCode::NumpadAdd => Key::Plus,
-        KeyCode::Equal => Key::Equals,
-
-        KeyCode::Digit0 | KeyCode::Numpad0 => Key::Num0,
-        KeyCode::Digit1 | KeyCode::Numpad1 => Key::Num1,
-        KeyCode::Digit2 | KeyCode::Numpad2 => Key::Num2,
-        KeyCode::Digit3 | KeyCode::Numpad3 => Key::Num3,
-        KeyCode::Digit4 | KeyCode::Numpad4 => Key::Num4,
-        KeyCode::Digit5 | KeyCode::Numpad5 => Key::Num5,
-        KeyCode::Digit6 | KeyCode::Numpad6 => Key::Num6,
-        KeyCode::Digit7 | KeyCode::Numpad7 => Key::Num7,
-        KeyCode::Digit8 | KeyCode::Numpad8 => Key::Num8,
-        KeyCode::Digit9 | KeyCode::Numpad9 => Key::Num9,
-
-        KeyCode::KeyA => Key::A,
-        KeyCode::KeyB => Key::B,
-        KeyCode::KeyC => Key::C,
-        KeyCode::KeyD => Key::D,
-        KeyCode::KeyE => Key::E,
-        KeyCode::KeyF => Key::F,
-        KeyCode::KeyG => Key::G,
-        KeyCode::KeyH => Key::H,
-        KeyCode::KeyI => Key::I,
-        KeyCode::KeyJ => Key::J,
-        KeyCode::KeyK => Key::K,
-        KeyCode::KeyL => Key::L,
-        KeyCode::KeyM => Key::M,
-        KeyCode::KeyN => Key::N,
-        KeyCode::KeyO => Key::O,
-        KeyCode::KeyP => Key::P,
-        KeyCode::KeyQ => Key::Q,
-        KeyCode::KeyR => Key::R,
-        KeyCode::KeyS => Key::S,
-        KeyCode::KeyT => Key::T,
-        KeyCode::KeyU => Key::U,
-        KeyCode::KeyV => Key::V,
-        KeyCode::KeyW => Key::W,
-        KeyCode::KeyX => Key::X,
-        KeyCode::KeyY => Key::Y,
-        KeyCode::KeyZ => Key::Z,
-
-        KeyCode::F1 => Key::F1,
-        KeyCode::F2 => Key::F2,
-        KeyCode::F3 => Key::F3,
-        KeyCode::F4 => Key::F4,
-        KeyCode::F5 => Key::F5,
-        KeyCode::F6 => Key::F6,
-        KeyCode::F7 => Key::F7,
-        KeyCode::F8 => Key::F8,
-        KeyCode::F9 => Key::F9,
-        KeyCode::F10 => Key::F10,
-        KeyCode::F11 => Key::F11,
-        KeyCode::F12 => Key::F12,
-        KeyCode::F13 => Key::F13,
-        KeyCode::F14 => Key::F14,
-        KeyCode::F15 => Key::F15,
-        KeyCode::F16 => Key::F16,
-        KeyCode::F17 => Key::F17,
-        KeyCode::F18 => Key::F18,
-        KeyCode::F19 => Key::F19,
-        KeyCode::F20 => Key::F20,
-        KeyCode::F21 => Key::F21,
-        KeyCode::F22 => Key::F22,
-        KeyCode::F23 => Key::F23,
-        KeyCode::F24 => Key::F24,
-        KeyCode::F25 => Key::F25,
-        KeyCode::F26 => Key::F26,
-        KeyCode::F27 => Key::F27,
-        KeyCode::F28 => Key::F28,
-        KeyCode::F29 => Key::F29,
-        KeyCode::F30 => Key::F30,
-        KeyCode::F31 => Key::F31,
-        KeyCode::F32 => Key::F32,
-        KeyCode::F33 => Key::F33,
-        KeyCode::F34 => Key::F34,
-        KeyCode::F35 => Key::F35,
-
-        // Modifier keys — egui now surfaces them as distinct physical
-        // variants so games / capture UIs can bind them independently.
-        // The collapsed `Modifiers.shift/ctrl/alt/command` booleans still
-        // track just the "any side is pressed" state for shortcut matching.
-        KeyCode::ShiftLeft => Key::ShiftLeft,
-        KeyCode::ShiftRight => Key::ShiftRight,
-        KeyCode::ControlLeft => Key::ControlLeft,
-        KeyCode::ControlRight => Key::ControlRight,
-        KeyCode::AltLeft => Key::AltLeft,
-        KeyCode::AltRight => Key::AltRight,
-        KeyCode::SuperLeft => Key::SuperLeft,
-        KeyCode::SuperRight => Key::SuperRight,
-
-        // ISO 102nd key — `<>|` on French AZERTY, `\|` on UK QWERTY.
-        KeyCode::IntlBackslash => Key::IntlBackslash,
-
-        _ => {
-            return None;
-        }
+        // Dropped, as they always have been by egui:
+        // * `KeyCode::Meta` — winit's *legacy* modifier key (not ⌘); the W3C `code`
+        //   set has no equivalent.
+        // * `KeyCode::Hyper` / `KeyCode::Turbo` — deprecated in the W3C spec.
+        _ => return None,
     })
 }
 
